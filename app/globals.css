@@ -1,0 +1,359 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+/* ─────────────────────────────────────────────
+ * Erlo Haas & Steffens — Brand Design Tokens
+ * Tailwind CSS v4 @theme configuration
+ * ───────────────────────────────────────────── */
+
+@theme inline {
+  /* ── Font Families ── */
+  --font-display: var(--font-unna), "Georgia", serif;
+  --font-body: var(--font-mulish), "Helvetica Neue", sans-serif;
+  --font-sans: var(--font-mulish), "Helvetica Neue", sans-serif;
+  --font-ui: var(--font-outfit), "Helvetica Neue", sans-serif;
+  --font-editorial: var(--font-unna), "Georgia", serif;
+
+  /* ── Custom Animations ── */
+  --animate-fade-in: fade-in 0.6s ease-out both;
+  --animate-slide-up: slide-up 0.7s ease-out both;
+  --animate-slide-down: slide-down 0.5s ease-out both;
+  --animate-scale-in: scale-in 0.4s ease-out both;
+  --animate-rotate-words: rotate-words 8s ease-in-out infinite;
+  --animate-grain: grain 0.5s steps(1) infinite;
+  --animate-shimmer: shimmer 2s linear infinite;
+  --animate-pulse-soft: pulse-soft 3s ease-in-out infinite;
+}
+
+/* ── Keyframes ── */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes rotate-words {
+
+  0%,
+  20% {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+
+  5%,
+  15% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  25%,
+  100% {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes grain {
+
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+
+  10% {
+    transform: translate(-5%, -10%);
+  }
+
+  20% {
+    transform: translate(-15%, 5%);
+  }
+
+  30% {
+    transform: translate(7%, -25%);
+  }
+
+  40% {
+    transform: translate(-5%, 25%);
+  }
+
+  50% {
+    transform: translate(-15%, 10%);
+  }
+
+  60% {
+    transform: translate(15%, 0%);
+  }
+
+  70% {
+    transform: translate(0%, 15%);
+  }
+
+  80% {
+    transform: translate(3%, 35%);
+  }
+
+  90% {
+    transform: translate(-10%, 10%);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes pulse-soft {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* ── Base Styles ── */
+
+::selection {
+  background-color: #E8D49A;
+  color: #0D1812;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: #EEEDE5;
+  color: #0D1812;
+  font-family: var(--font-body);
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+/* ── Custom Golden Cursor ── */
+
+* {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='10' cy='10' r='3' fill='%23E8D49A' opacity='0.8'/%3E%3Ccircle cx='10' cy='10' r='6' fill='none' stroke='%23E8D49A' stroke-width='1' opacity='0.4'/%3E%3C/svg%3E") 10 10, auto;
+}
+
+a,
+button,
+[role="button"],
+input[type="submit"],
+select {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='12' cy='12' r='4' fill='%23E8D49A' opacity='0.9'/%3E%3Ccircle cx='12' cy='12' r='8' fill='none' stroke='%23E8D49A' stroke-width='1.5' opacity='0.5'/%3E%3C/svg%3E") 12 12, pointer;
+}
+
+/* ── Custom Scrollbar ── */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #EEEDE5;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #E8D49A;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #877249;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #E8D49A #EEEDE5;
+}
+
+/* ── Grain Noise Overlay ── */
+
+.grain-overlay::before {
+  content: "";
+  position: fixed;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 1;
+  animation: var(--animate-grain);
+}
+
+/* Disable grain on mobile — feTurbulence is CPU-rasterized and kills perf */
+@media (max-width: 768px) {
+  .grain-overlay::before {
+    display: none;
+  }
+}
+
+/* ── Typography Utilities ── */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+
+
+/* ── Editorial Blog Styles ── */
+
+.prose-editorial {
+  font-family: var(--font-body);
+  font-size: 1.125rem;
+  line-height: 1.85;
+  color: #0D1812;
+}
+
+.prose-editorial h2 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0D1812;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.prose-editorial h3 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1B2D1E;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose-editorial p {
+  margin-bottom: 1.25rem;
+  color: #0D1812;
+}
+
+.prose-editorial a {
+  color: #877249;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: color 0.2s;
+}
+
+.prose-editorial a:hover {
+  color: #E8D49A;
+}
+
+.prose-editorial blockquote {
+  border-left: 3px solid #E8D49A;
+  padding-left: 1rem;
+  font-style: italic;
+  color: #3B5A3C;
+  margin: 1.5rem 0;
+}
+
+.prose-editorial ul,
+.prose-editorial ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.prose-editorial li {
+  margin-bottom: 0.4rem;
+  color: #0D1812;
+}
+
+.prose-editorial li::marker {
+  color: #877249;
+}
+
+.prose-editorial img {
+  border-radius: 1rem;
+  margin: 2em 0;
+}
+
+.prose-editorial hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #E8D49A, transparent);
+  margin: 3em 0;
+}
+
+.drop-cap::first-letter {
+  font-family: var(--font-display);
+  float: left;
+  font-size: 4.2em;
+  line-height: 0.8;
+  padding-right: 0.12em;
+  padding-top: 0.06em;
+  color: var(--color-gold);
+  font-weight: 700;
+}
+
+.reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-gold), var(--color-secondary));
+  z-index: 9998;
+  transition: width 0.1s linear;
+}
