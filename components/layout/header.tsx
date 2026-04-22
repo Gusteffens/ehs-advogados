@@ -31,10 +31,7 @@ export function Header() {
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
-    // Close mobile menu on route change
-    useEffect(() => {
-        setIsOpen(false);
-    }, [pathname]);
+    const closeMobileMenu = () => setIsOpen(false);
 
     return (
         <header
@@ -126,7 +123,7 @@ export function Header() {
 
                     {/* ── Mobile Menu Toggle ── */}
                     <button
-                        onClick={() => setIsOpen(!isOpen)}
+                        onClick={() => setIsOpen((open) => !open)}
                         className={cn(
                             "lg:hidden relative z-50 flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
                             scrolled
@@ -196,6 +193,7 @@ export function Header() {
                                             >
                                                 <Link
                                                     href={link.href}
+                                                    onClick={closeMobileMenu}
                                                     className={cn(
                                                         "block px-4 py-3 text-lg font-medium rounded-xl transition-colors no-underline",
                                                         isActive
@@ -219,7 +217,12 @@ export function Header() {
                                         </div>
                                     </Show>
                                     <Link href="/contato" className="block">
-                                        <Button variant="secondary" size="md" className="w-full">
+                                        <Button
+                                            variant="secondary"
+                                            size="md"
+                                            className="w-full"
+                                            onClick={closeMobileMenu}
+                                        >
                                             Fale Conosco
                                         </Button>
                                     </Link>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTransition, useState, useEffect } from "react";
+import { useTransition, useState } from "react";
 import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -13,11 +13,7 @@ export function BlogSearch({ currentQuery }: BlogSearchProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
-    const [query, setQuery] = useState(currentQuery || "");
-
-    useEffect(() => {
-        setQuery(currentQuery || "");
-    }, [currentQuery]);
+    const [query, setQuery] = useState(() => currentQuery || "");
 
     const handleSearch = (value: string) => {
         setQuery(value);

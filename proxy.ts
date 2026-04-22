@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { isAdmin } from '@/lib/auth';
 
 const isProtectedRoute = createRouteMatcher(['/admin(.*)']);
 
@@ -14,10 +15,8 @@ export default clerkMiddleware(async (auth, req) => {
             unauthenticatedUrl: new URL('/sign-in', req.url).toString(),
         });
 
-        const sessionClaims = (await auth()).sessionClaims;
-        const role = (sessionClaims?.metadata as any)?.role;
-
-        if (role !== 'admin') {
+        const { sessionClaims } = await auth();
+        if (!isAdmin(sessionClaims)) {
             return NextResponse.redirect(new URL('/', req.url));
         }
     }

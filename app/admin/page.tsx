@@ -10,7 +10,7 @@ export default async function AdminDashboard() {
     const supabase = createAdminClient();
 
     // Fetch posts metrics (requires 'posts' table with 'status' and 'views' columns in Supabase)
-    const { data: posts, error } = await supabase
+    const { data: posts } = await supabase
         .from("posts")
         .select("id, title, status, created_at, views")
         .order("created_at", { ascending: false });

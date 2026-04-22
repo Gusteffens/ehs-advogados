@@ -5,7 +5,6 @@ import {
     ArrowRight, CheckCircle,
 } from "lucide-react";
 import { Container } from "@/components/ui/container";
-import { SectionTitle } from "@/components/ui/section-title";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";

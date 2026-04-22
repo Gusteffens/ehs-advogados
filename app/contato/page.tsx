@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { MapPin, Mail, Instagram, Facebook, MessageCircle } from "lucide-react";
+import { MapPin, Mail, Instagram, Facebook } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { ContactForm } from "./contact-form";
 

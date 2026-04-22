@@ -1,5 +1,11 @@
 import type { MetadataRoute } from "next";
 
+interface SitemapPost {
+    slug: string;
+    updated_at: string | null;
+    published_at: string | null;
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const staticPages: MetadataRoute.Sitemap = [
         { url: "https://www.ehsadvogados.com.br", priority: 1.0, changeFrequency: "weekly" },
@@ -22,8 +28,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             }
         );
         if (res.ok) {
-            const posts = await res.json();
-            const postPages: MetadataRoute.Sitemap = posts.map((post: any) => ({
+            const posts = (await res.json()) as SitemapPost[];
+            const postPages: MetadataRoute.Sitemap = posts.map((post) => ({
                 url: `https://www.ehsadvogados.com.br/blog/${post.slug}`,
                 lastModified: new Date(post.updated_at || post.published_at),
                 priority: 0.7,

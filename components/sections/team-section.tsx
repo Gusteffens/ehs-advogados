@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Image from "next/image";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import { Mail } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { SectionTitle } from "@/components/ui/section-title";
@@ -71,19 +70,6 @@ const cardVariants = {
 };
 
 export function TeamSection() {
-    const prefersReducedMotion = useReducedMotion();
-    const [isMobile, setIsMobile] = useState(false);
-
-    useEffect(() => {
-        const mql = window.matchMedia("(max-width: 768px)");
-        setIsMobile(mql.matches);
-        const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-        mql.addEventListener("change", handler);
-        return () => mql.removeEventListener("change", handler);
-    }, []);
-
-    const shouldReduceMotion = prefersReducedMotion || isMobile;
-
     const renderCard = (member: typeof team[0]) => (
         <motion.div
             key={member.name}

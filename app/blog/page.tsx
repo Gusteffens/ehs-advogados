@@ -7,21 +7,22 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { CategoryFilter } from "@/components/blog/category-filter";
 import { BlogSearch } from "@/components/blog/blog-search";
 import { Suspense } from "react";
+import type { BlogPostSummary, CategoryOption } from "@/types/blog";
 
 export const metadata: Metadata = {
     title: "Blog Jurídico",
-    description: "Artigos e análises jurídicas sobre Direito Civil, Agronegócio, Ambiental e Penal pelos advogados da Erlo, Haas & Steffens.",
+    description:
+        "Artigos e análises jurídicas sobre Direito Civil, Agronegócio, Ambiental e Penal pelos advogados da Erlo, Haas & Steffens.",
 };
 
 export const revalidate = 0;
 
-/* ── Author photo mapping ── */
 const teamImages: Record<string, string> = {
     "alessandra-steffens": "/images/team/alessandra-steffens.png",
-    "jacson-erlo":         "/images/team/jacson-erlo.png",
-    "jean-erlo":           "/images/team/jean-erlo.png",
-    "luiza-haas":          "/images/team/luiza-haas.png",
-    "maisa-christ":        "/images/team/maisa-christ.png",
+    "jacson-erlo": "/images/team/jacson-erlo.png",
+    "jean-erlo": "/images/team/jean-erlo.png",
+    "luiza-haas": "/images/team/luiza-haas.png",
+    "maisa-christ": "/images/team/maisa-christ.png",
 };
 
 export default async function BlogPage({
@@ -32,17 +33,28 @@ export default async function BlogPage({
     const resolvedParams = await searchParams;
     const supabase = createAdminClient();
 
-    // Fetch categories (exclude Direito Trabalhista)
-    const { data: categories } = await supabase
+    const { data: categoriesData } = await supabase
         .from("categories")
         .select("*")
         .order("name");
 
-    const filteredCategories = (categories || []).filter(
-        (cat: any) => cat.name !== "Direito Trabalhista"
-    );
+    const filteredCategories = ((categoriesData ?? []) as Array<{
+        id: number | string;
+        name: string;
+        slug: string;
+        color_hex: string | null;
+    }>)
+        .map(
+            (category) =>
+                ({
+                    id: String(category.id),
+                    name: category.name,
+                    slug: category.slug,
+                    color_hex: category.color_hex,
+                }) satisfies CategoryOption
+        )
+        .filter((category) => category.name !== "Direito Trabalhista");
 
-    // Fetch posts + authors for photo
     const categoria = resolvedParams?.categoria as string | undefined;
     const searchQuery = (resolvedParams?.q as string | undefined)?.trim();
 
@@ -56,25 +68,24 @@ export default async function BlogPage({
         query = query.eq("categories.slug", categoria);
     }
 
-    const { data: posts } = await query;
-    let safePosts = posts || [];
+    const { data: postsData } = await query;
+    let safePosts = (postsData ?? []) as BlogPostSummary[];
 
-    // Client-side search filtering by title and excerpt
     if (searchQuery) {
         const q = searchQuery.toLowerCase();
         safePosts = safePosts.filter(
-            (post: any) =>
-                post.title?.toLowerCase().includes(q) ||
+            (post) =>
+                post.title.toLowerCase().includes(q) ||
                 post.excerpt?.toLowerCase().includes(q)
         );
     }
 
-    const featuredPost = !categoria && !searchQuery && safePosts.length > 0 ? safePosts[0] : null;
+    const featuredPost =
+        !categoria && !searchQuery && safePosts.length > 0 ? safePosts[0] : null;
     const gridPosts = featuredPost ? safePosts.slice(1) : safePosts;
 
     return (
         <>
-            {/* ── Hero ── */}
             <section className="pt-32 pb-16 lg:pt-40 lg:pb-20 bg-[#0D1812] relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-[#E8D49A]/5 rounded-full blur-[140px] pointer-events-none" />
                 <div className="absolute bottom-0 left-[20%] w-px h-48 bg-gradient-to-b from-[#E8D49A]/12 to-transparent pointer-events-none" />
@@ -93,21 +104,25 @@ export default async function BlogPage({
                 </Container>
             </section>
 
-            {/* ── Search + Category Filter ── */}
             <section className="py-6 bg-[#EEEDE5] sticky top-16 z-20">
                 <Container>
                     <div className="flex flex-col gap-4">
                         <Suspense fallback={<div className="h-10" />}>
-                            <BlogSearch currentQuery={searchQuery} />
+                            <BlogSearch
+                                key={`blog-search-${searchQuery ?? ""}`}
+                                currentQuery={searchQuery}
+                            />
                         </Suspense>
                         <Suspense fallback={<div className="h-10" />}>
-                            <CategoryFilter categories={filteredCategories} currentCategory={categoria} />
+                            <CategoryFilter
+                                categories={filteredCategories}
+                                currentCategory={categoria}
+                            />
                         </Suspense>
                     </div>
                 </Container>
             </section>
 
-            {/* ── Featured Post ── */}
             {featuredPost && (
                 <section className="pt-12 pb-10 bg-[#EEEDE5]">
                     <Container>
@@ -115,7 +130,6 @@ export default async function BlogPage({
                             href={`/blog/${featuredPost.slug}`}
                             className="group grid grid-cols-1 lg:grid-cols-2 gap-0 items-stretch rounded-2xl overflow-hidden bg-white border border-[#3B5A3C]/15 shadow-sm hover:shadow-xl hover:shadow-[#0D1812]/8 transition-all duration-400 no-underline"
                         >
-                            {/* Cover / placeholder */}
                             <div className="relative aspect-[16/9] lg:aspect-auto lg:min-h-[320px] bg-[#1B2D1E] overflow-hidden">
                                 {featuredPost.cover_image_url ? (
                                     <Image
@@ -129,12 +143,13 @@ export default async function BlogPage({
                                     <div className="absolute inset-0 flex items-center justify-center">
                                         <div className="flex flex-col items-center gap-3">
                                             <div className="w-16 h-16 rounded-2xl bg-[#E8D49A]/10 flex items-center justify-center">
-                                                <span className="font-display text-xl font-bold text-[#E8D49A]">EHS</span>
+                                                <span className="font-display text-xl font-bold text-[#E8D49A]">
+                                                    EHS
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
                                 )}
-                                {/* Em destaque tag */}
                                 <div className="absolute top-4 left-4 z-10">
                                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#E8D49A] text-[#0D1812]">
                                         Em destaque
@@ -142,7 +157,6 @@ export default async function BlogPage({
                                 </div>
                             </div>
 
-                            {/* Content */}
                             <div className="flex flex-col justify-between p-8 lg:p-10">
                                 <div>
                                     {featuredPost.categories?.name && (
@@ -158,14 +172,24 @@ export default async function BlogPage({
                                     </p>
                                 </div>
                                 <div className="flex items-center justify-between pt-5 border-t border-[#3B5A3C]/10">
-                                    {/* Author */}
                                     <div className="flex items-center gap-3">
                                         {(() => {
-                                            const authorSlug = (featuredPost.authors as any)?.slug;
-                                            const photo = authorSlug ? teamImages[authorSlug] : null;
+                                            const authorSlug = featuredPost.authors?.slug;
+                                            const photo = authorSlug
+                                                ? teamImages[authorSlug]
+                                                : null;
+
                                             return photo ? (
                                                 <div className="relative h-8 w-8 rounded-full overflow-hidden shrink-0">
-                                                    <Image src={photo} alt={(featuredPost.authors as any)?.full_name ?? "Autor"} fill className="object-cover object-top" />
+                                                    <Image
+                                                        src={photo}
+                                                        alt={
+                                                            featuredPost.authors?.full_name ??
+                                                            "Autor"
+                                                        }
+                                                        fill
+                                                        className="object-cover object-top"
+                                                    />
                                                 </div>
                                             ) : (
                                                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1B2D1E] text-[#E8D49A] font-display text-xs font-bold shrink-0">
@@ -175,10 +199,17 @@ export default async function BlogPage({
                                         })()}
                                         <div>
                                             <p className="text-[#0D1812] text-xs font-semibold leading-none">
-                                                {(featuredPost.authors as any)?.full_name ?? "Equipe EHS"}
+                                                {featuredPost.authors?.full_name ?? "Equipe EHS"}
                                             </p>
                                             <p className="text-[#3B5A3C]/60 text-xs mt-0.5">
-                                                {new Date(featuredPost.published_at || featuredPost.created_at).toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" })}
+                                                {new Date(
+                                                    featuredPost.published_at ||
+                                                        featuredPost.created_at
+                                                ).toLocaleDateString("pt-BR", {
+                                                    day: "numeric",
+                                                    month: "short",
+                                                    year: "numeric",
+                                                })}
                                             </p>
                                         </div>
                                     </div>
@@ -193,22 +224,30 @@ export default async function BlogPage({
                 </section>
             )}
 
-            {/* ── Articles Grid ── */}
-            <section className={featuredPost ? "pb-24 lg:pb-32 bg-[#EEEDE5]" : "py-12 lg:py-20 bg-[#EEEDE5]"}>
+            <section
+                className={
+                    featuredPost
+                        ? "pb-24 lg:pb-32 bg-[#EEEDE5]"
+                        : "py-12 lg:py-20 bg-[#EEEDE5]"
+                }
+            >
                 <Container>
                     {gridPosts.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {gridPosts.map((post) => {
-                                const authorSlug = (post.authors as any)?.slug;
-                                const authorPhoto = authorSlug ? teamImages[authorSlug] : null;
-                                const authorName = (post.authors as any)?.full_name ?? "Equipe EHS";
+                                const authorSlug = post.authors?.slug;
+                                const authorPhoto = authorSlug
+                                    ? teamImages[authorSlug]
+                                    : null;
+                                const authorName =
+                                    post.authors?.full_name ?? "Equipe EHS";
+
                                 return (
                                     <Link
                                         key={post.slug}
                                         href={`/blog/${post.slug}`}
                                         className="group flex flex-col rounded-2xl bg-white border border-[#3B5A3C]/15 overflow-hidden shadow-sm hover:-translate-y-1 hover:shadow-xl hover:shadow-[#0D1812]/8 hover:border-[#3B5A3C]/30 transition-all duration-300 no-underline"
                                     >
-                                        {/* Cover image / placeholder */}
                                         <div className="relative aspect-video bg-[#1B2D1E] overflow-hidden">
                                             {post.cover_image_url ? (
                                                 <Image
@@ -219,21 +258,25 @@ export default async function BlogPage({
                                                 />
                                             ) : (
                                                 <div className="absolute inset-0 flex items-center justify-center">
-                                                    <span className="font-display text-lg font-bold text-[#E8D49A]/40">EHS</span>
+                                                    <span className="font-display text-lg font-bold text-[#E8D49A]/40">
+                                                        EHS
+                                                    </span>
                                                 </div>
                                             )}
-                                            {/* Category badge over image */}
                                             {post.categories?.name && (
                                                 <div className="absolute top-3 left-3 z-10">
                                                     <span
                                                         className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold text-[#0D1812]"
-                                                        style={{ backgroundColor: post.categories?.color_hex ?? "#E8D49A" }}
+                                                        style={{
+                                                            backgroundColor:
+                                                                post.categories.color_hex ??
+                                                                "#E8D49A",
+                                                        }}
                                                     >
                                                         {post.categories.name}
                                                     </span>
                                                 </div>
                                             )}
-                                            {/* Hover arrow */}
                                             <div className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-1 group-hover:translate-y-0">
                                                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#E8D49A] text-[#0D1812]">
                                                     <ArrowUpRight className="h-4 w-4" />
@@ -241,7 +284,6 @@ export default async function BlogPage({
                                             </div>
                                         </div>
 
-                                        {/* Card body */}
                                         <div className="flex flex-col flex-1 p-6">
                                             <h3 className="font-display font-bold text-[#0D1812] text-[1.05rem] leading-snug mb-2 group-hover:text-[#3B5A3C] transition-colors line-clamp-2">
                                                 {post.title}
@@ -250,12 +292,16 @@ export default async function BlogPage({
                                                 {post.excerpt}
                                             </p>
 
-                                            {/* Footer */}
                                             <div className="flex items-center justify-between pt-4 border-t border-[#3B5A3C]/10 mt-auto">
                                                 <div className="flex items-center gap-2">
                                                     {authorPhoto ? (
                                                         <div className="relative h-7 w-7 rounded-full overflow-hidden shrink-0">
-                                                            <Image src={authorPhoto} alt={authorName} fill className="object-cover object-top" />
+                                                            <Image
+                                                                src={authorPhoto}
+                                                                alt={authorName}
+                                                                fill
+                                                                className="object-cover object-top"
+                                                            />
                                                         </div>
                                                     ) : (
                                                         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1B2D1E] text-[#E8D49A] font-display text-[10px] font-bold shrink-0">
@@ -263,9 +309,17 @@ export default async function BlogPage({
                                                         </div>
                                                     )}
                                                     <div>
-                                                        <p className="text-[#0D1812] text-xs font-semibold leading-none">{authorName}</p>
+                                                        <p className="text-[#0D1812] text-xs font-semibold leading-none">
+                                                            {authorName}
+                                                        </p>
                                                         <p className="text-[#3B5A3C]/50 text-[10px] mt-0.5">
-                                                            {new Date(post.published_at || post.created_at).toLocaleDateString("pt-BR", { day: "numeric", month: "short" })}
+                                                            {new Date(
+                                                                post.published_at ||
+                                                                    post.created_at
+                                                            ).toLocaleDateString("pt-BR", {
+                                                                day: "numeric",
+                                                                month: "short",
+                                                            })}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -281,7 +335,9 @@ export default async function BlogPage({
                         </div>
                     ) : (
                         <div className="text-center py-24">
-                            <p className="text-[#3B5A3C]/60 text-lg">Nenhum artigo encontrado nesta categoria.</p>
+                            <p className="text-[#3B5A3C]/60 text-lg">
+                                Nenhum artigo encontrado nesta categoria.
+                            </p>
                         </div>
                     )}
                 </Container>

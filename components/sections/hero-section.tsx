@@ -11,6 +11,7 @@ import {
 import { ArrowRight } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
+import { useHasMounted, useMediaQuery } from "@/lib/client-hooks";
 
 const rotatingWords = ["Direito Civil", "Direito do Agronegócio", "Direito Penal", "Direito Ambiental"];
 
@@ -38,24 +39,10 @@ export function HeroSection() {
     const [wordIndex, setWordIndex] = useState(0);
     const prefersReducedMotion = useReducedMotion();
     const sectionRef = useRef<HTMLElement>(null);
-    const [isMobile, setIsMobile] = useState(false);
-    const [mounted, setMounted] = useState(false);
+    const isMobile = useMediaQuery("(max-width: 767px)");
+    const mounted = useHasMounted();
 
     const particles = useGoldenParticles(12);
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
-
-    /* Hydration-safe mobile check */
-    useEffect(() => {
-        const checkMobile = () => {
-            setIsMobile(window.innerWidth < 768);
-        };
-        checkMobile();
-        window.addEventListener("resize", checkMobile);
-        return () => window.removeEventListener("resize", checkMobile);
-    }, []);
 
     /* Rotating word timer */
     useEffect(() => {

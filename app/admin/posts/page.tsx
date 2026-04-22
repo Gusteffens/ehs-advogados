@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
- PenSquare, Search, Eye, MoreHorizontal,
- Calendar, Clock, ArrowUpRight,
+ PenSquare, Search, Eye, Calendar,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ export const revalidate = 0; // force dynamic cache
 
 export default async function PostsPage() {
     const supabase = createAdminClient();
-    const { data: posts, error } = await supabase
+    const { data: posts } = await supabase
         .from('posts')
         .select('*, categories(*)')
         .order('created_at', { ascending: false });
@@ -109,7 +108,7 @@ export default async function PostsPage() {
  </span>
  </td>
  <td className="px-6 py-4">
-    <PostActions id={post.id} currentStatus={post.status} />
+    <PostActions id={post.id} />
  </td>
  </tr>
  ))}

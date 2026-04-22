@@ -24,3 +24,28 @@ export function calculateReadingTime(text: string): number {
     const wordCount = text.trim().split(/\s+/).length;
     return Math.max(1, Math.ceil(wordCount / wordsPerMinute));
 }
+
+export function isNextRedirectError(error: unknown): boolean {
+    if (!error || typeof error !== "object") {
+        return false;
+    }
+
+    const maybeRedirect = error as {
+        message?: unknown;
+        digest?: unknown;
+    };
+
+    return (
+        maybeRedirect.message === "NEXT_REDIRECT" ||
+        (typeof maybeRedirect.digest === "string" &&
+            maybeRedirect.digest.startsWith("NEXT_REDIRECT"))
+    );
+}
+
+export function getErrorMessage(error: unknown, fallback = "Erro inesperado"): string {
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
+    return fallback;
+}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { auth } from "@clerk/nextjs/server";
+import { isAdmin } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
@@ -16,9 +17,7 @@ export default async function AdminLayout({
     children: React.ReactNode;
 }) {
     const { sessionClaims } = await auth();
-    const role = (sessionClaims?.metadata as any)?.role;
-
-    if (role !== 'admin') {
+    if (!isAdmin(sessionClaims)) {
         redirect("/");
     }
     return (

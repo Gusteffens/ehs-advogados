@@ -7,6 +7,11 @@ import { ArrowLeft, Clock, Calendar, Eye } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { incrementViews } from "@/app/actions/blog";
+import type {
+    BlogAuthorSummary,
+    BlogCategorySummary,
+    BlogPostSummary,
+} from "@/types/blog";
 
 export const revalidate = 3600;
 
@@ -14,41 +19,53 @@ interface PageProps {
     params: Promise<{ slug: string }>;
 }
 
-/* ── Author photo mapping ── */
 const teamImages: Record<string, string> = {
-    "escritorio-ehs":       "/images/logo-ehs-monogram.png",
+    "escritorio-ehs": "/images/logo-ehs-monogram.png",
     "alessandra-steffens": "/images/team/alessandra-steffens.png",
-    "jacson-erlo":         "/images/team/jacson-erlo.png",
-    "jean-erlo":           "/images/team/jean-erlo.png",
-    "luiza-haas":          "/images/team/luiza-haas.png",
-    "maisa-christ":        "/images/team/maisa-christ.png",
+    "jacson-erlo": "/images/team/jacson-erlo.png",
+    "jean-erlo": "/images/team/jean-erlo.png",
+    "luiza-haas": "/images/team/luiza-haas.png",
+    "maisa-christ": "/images/team/maisa-christ.png",
 };
 
-/* ── Pre-render published posts ── */
+interface BlogMetadataRecord {
+    title: string;
+    excerpt: string | null;
+    cover_image_url: string | null;
+    slug: string;
+    published_at: string | null;
+    updated_at: string | null;
+    authors: Pick<BlogAuthorSummary, "full_name"> | null;
+}
+
 export async function generateStaticParams() {
     const supabase = createAdminClient();
     const { data: posts } = await supabase
         .from("posts")
         .select("slug")
         .eq("status", "published");
-    return (posts || []).map((p) => ({ slug: p.slug }));
+
+    return (posts || []).map((post) => ({ slug: post.slug }));
 }
 
-/* ── Dynamic Metadata with JSON-LD ── */
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const { slug } = await params;
     const supabase = createAdminClient();
-    const { data: post } = await supabase
+    const { data: postData } = await supabase
         .from("posts")
-        .select("title, excerpt, cover_image_url, slug, published_at, updated_at, authors(full_name)")
+        .select(
+            "title, excerpt, cover_image_url, slug, published_at, updated_at, authors(full_name)"
+        )
         .eq("slug", slug)
         .eq("status", "published")
         .maybeSingle();
 
+    const post = postData as BlogMetadataRecord | null;
     if (!post) return { title: "Artigo não encontrado" };
 
     const title = post.title;
-    const description = post.excerpt ?? "Artigo do Blog Jurídico do Erlo, Haas & Steffens.";
+    const description =
+        post.excerpt ?? "Artigo do Blog Jurídico do Erlo, Haas & Steffens.";
 
     const articleSchema = {
         "@context": "https://schema.org",
@@ -57,7 +74,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         description,
         author: {
             "@type": "Person",
-            name: (post.authors as any)?.full_name ?? "Erlo, Haas & Steffens",
+            name: post.authors?.full_name ?? "Erlo, Haas & Steffens",
         },
         publisher: {
             "@type": "Organization",
@@ -81,7 +98,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
             siteName: "Erlo, Haas & Steffens Advocacia",
             url: `https://www.ehsadvogados.com.br/blog/${post.slug}`,
             ...(post.cover_image_url && {
-                images: [{ url: post.cover_image_url, width: 1200, height: 630, alt: title }],
+                images: [
+                    {
+                        url: post.cover_image_url,
+                        width: 1200,
+                        height: 630,
+                        alt: title,
+                    },
+                ],
             }),
         },
         twitter: {
@@ -96,21 +120,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
 }
 
-/* ── Page ── */
 export default async function ArticlePage({ params }: PageProps) {
     const { slug } = await params;
     const supabase = createAdminClient();
 
-    const { data: post } = await supabase
+    const { data: postData } = await supabase
         .from("posts")
         .select("*, authors(*), categories(name, slug, color_hex)")
         .eq("slug", slug)
         .eq("status", "published")
         .single();
 
+    const post = postData as (BlogPostSummary & { content: string }) | null;
     if (!post) notFound();
 
-    // Fire-and-forget view increment
     incrementViews(post.id).catch(() => {});
 
     const publishedDate = post.published_at
@@ -121,32 +144,23 @@ export default async function ArticlePage({ params }: PageProps) {
           })
         : null;
 
-    const author = post.authors as {
-        full_name?: string;
-        slug?: string;
-        oab?: string;
-        specialties?: string[];
-        bio?: string;
-    } | null;
-
+    const author = post.authors as BlogAuthorSummary | null;
     const authorName = author?.full_name ?? "Equipe EHS";
     const authorSlug = author?.slug ?? null;
     const authorPhoto = authorSlug ? (teamImages[authorSlug] ?? null) : null;
-    // Fallback to monogram logo if no mapped photo
     const authorPhotoFallback = "/images/logo-ehs-monogram.png";
 
-    const categoryColor = (post.categories as any)?.color_hex ?? "#E8D49A";
-    const categoryName = (post.categories as any)?.name ?? null;
+    const category = post.categories as BlogCategorySummary | null;
+    const categoryColor = category?.color_hex ?? "#E8D49A";
+    const categoryName = category?.name ?? null;
 
     return (
         <div className="min-h-screen bg-[#EEEDE5]">
-            {/* ── Article Header ── */}
             <section className="pt-32 pb-20 lg:pt-40 lg:pb-24 bg-[#0D1812] relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-80 h-80 bg-[#E8D49A]/5 rounded-full blur-[120px] pointer-events-none" />
                 <div className="absolute bottom-0 left-[35%] w-px h-32 bg-gradient-to-b from-[#E8D49A]/15 to-transparent pointer-events-none" />
 
                 <Container className="relative">
-                    {/* Back link */}
                     <Link
                         href="/blog"
                         className="inline-flex items-center gap-2 text-sm text-[#EEEDE5]/40 hover:text-[#E8D49A] transition-colors mb-10 no-underline group"
@@ -155,7 +169,6 @@ export default async function ArticlePage({ params }: PageProps) {
                         Voltar ao Blog
                     </Link>
 
-                    {/* Category badge */}
                     {categoryName && (
                         <div className="mb-5">
                             <span
@@ -167,14 +180,11 @@ export default async function ArticlePage({ params }: PageProps) {
                         </div>
                     )}
 
-                    {/* Title */}
                     <h1 className="font-display text-3xl sm:text-4xl lg:text-[2.85rem] font-bold text-[#EEEDE5] leading-tight max-w-3xl mb-8">
                         {post.title}
                     </h1>
 
-                    {/* Meta: author · date · read time · views — all inline */}
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                        {/* Author with photo */}
                         <div className="flex items-center gap-2.5">
                             <div className="relative h-10 w-10 rounded-full overflow-hidden shrink-0 ring-2 ring-[#E8D49A]/20">
                                 <Image
@@ -184,7 +194,9 @@ export default async function ArticlePage({ params }: PageProps) {
                                     className="object-cover object-center"
                                 />
                             </div>
-                            <span className="text-[#EEEDE5] text-sm font-medium">{authorName}</span>
+                            <span className="text-[#EEEDE5] text-sm font-medium">
+                                {authorName}
+                            </span>
                         </div>
 
                         {publishedDate && (
@@ -208,7 +220,10 @@ export default async function ArticlePage({ params }: PageProps) {
                                 <span className="text-[#EEEDE5]/20 text-sm">·</span>
                                 <span className="flex items-center gap-1.5 text-sm text-[#EEEDE5]/50">
                                     <Eye className="h-3.5 w-3.5" />
-                                    {post.views} {post.views === 1 ? "visualização" : "visualizações"}
+                                    {post.views}{" "}
+                                    {post.views === 1
+                                        ? "visualização"
+                                        : "visualizações"}
                                 </span>
                             </>
                         )}
@@ -216,7 +231,6 @@ export default async function ArticlePage({ params }: PageProps) {
                 </Container>
             </section>
 
-            {/* ── Cover Image — placed in the light section ── */}
             {post.cover_image_url && (
                 <section className="bg-[#EEEDE5] pt-10 pb-4">
                     <Container>
@@ -234,22 +248,21 @@ export default async function ArticlePage({ params }: PageProps) {
                 </section>
             )}
 
-            {/* ── Article Body ── */}
             <section className="py-12 lg:py-16 bg-[#EEEDE5]">
                 <Container>
                     <article
                         className="prose-editorial max-w-2xl mx-auto"
-                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }}
+                        dangerouslySetInnerHTML={{
+                            __html: DOMPurify.sanitize(post.content),
+                        }}
                     />
                 </Container>
             </section>
 
-            {/* ── Author Footer Card ── */}
             <section className="pb-16 bg-[#EEEDE5]">
                 <Container>
                     <div className="max-w-2xl mx-auto rounded-2xl bg-[#1B2D1E] p-6 sm:p-8">
                         <div className="flex flex-col sm:flex-row items-start gap-5">
-                            {/* Photo — 80×80, circular */}
                             <div className="relative h-20 w-20 rounded-2xl overflow-hidden shrink-0 shadow-lg ring-2 ring-[#E8D49A]/10">
                                 <Image
                                     src={authorPhoto ?? authorPhotoFallback}
@@ -259,7 +272,6 @@ export default async function ArticlePage({ params }: PageProps) {
                                 />
                             </div>
 
-                            {/* Info */}
                             <div className="flex-1 min-w-0">
                                 <p className="text-xs font-semibold uppercase tracking-widest text-[#877249] mb-1">
                                     Escrito por
@@ -274,12 +286,12 @@ export default async function ArticlePage({ params }: PageProps) {
                                 )}
                                 {author?.specialties && author.specialties.length > 0 && (
                                     <div className="flex flex-wrap gap-2 mb-3">
-                                        {author.specialties.map((s) => (
+                                        {author.specialties.map((specialty) => (
                                             <span
-                                                key={s}
+                                                key={specialty}
                                                 className="px-2.5 py-0.5 text-xs font-medium rounded-lg bg-[#E8D49A]/10 text-[#E8D49A] border border-[#E8D49A]/20"
                                             >
-                                                {s}
+                                                {specialty}
                                             </span>
                                         ))}
                                     </div>
@@ -295,14 +307,14 @@ export default async function ArticlePage({ params }: PageProps) {
                 </Container>
             </section>
 
-            {/* ── CTA ── */}
             <section className="py-16 bg-[#1B2D1E]">
                 <Container className="text-center">
                     <h3 className="font-display text-2xl sm:text-3xl font-bold text-[#EEEDE5] mb-4">
                         Precisa de orientação sobre este tema?
                     </h3>
                     <p className="text-[#EEEDE5]/50 max-w-lg mx-auto mb-8">
-                        Nossa equipe está pronta para ajudar. Entre em contato para uma análise do seu caso.
+                        Nossa equipe está pronta para ajudar. Entre em contato para uma
+                        análise do seu caso.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                         <Link
