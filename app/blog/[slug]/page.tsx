@@ -5,15 +5,14 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Clock, Calendar, Eye } from "lucide-react";
 import { Container } from "@/components/ui/container";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { incrementViews } from "@/app/actions/blog";
-import type {
-    BlogAuthorSummary,
-    BlogCategorySummary,
-    BlogPostSummary,
-} from "@/types/blog";
+import {
+    getPublishedBlogPostBySlug,
+    getPublishedBlogSlugs,
+} from "@/lib/data/blog";
+import { PostViewTracker } from "@/components/blog/post-view-tracker";
+import type { BlogAuthorSummary, BlogCategorySummary } from "@/types/blog";
 
-export const revalidate = 3600;
+export const revalidate = 300;
 
 interface PageProps {
     params: Promise<{ slug: string }>;
@@ -28,44 +27,21 @@ const teamImages: Record<string, string> = {
     "maisa-christ": "/images/team/maisa-christ.png",
 };
 
-interface BlogMetadataRecord {
-    title: string;
-    excerpt: string | null;
-    cover_image_url: string | null;
-    slug: string;
-    published_at: string | null;
-    updated_at: string | null;
-    authors: Pick<BlogAuthorSummary, "full_name"> | null;
-}
-
 export async function generateStaticParams() {
-    const supabase = createAdminClient();
-    const { data: posts } = await supabase
-        .from("posts")
-        .select("slug")
-        .eq("status", "published");
-
-    return (posts || []).map((post) => ({ slug: post.slug }));
+    const slugs = await getPublishedBlogSlugs();
+    return slugs.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const { slug } = await params;
-    const supabase = createAdminClient();
-    const { data: postData } = await supabase
-        .from("posts")
-        .select(
-            "title, excerpt, cover_image_url, slug, published_at, updated_at, authors(full_name)"
-        )
-        .eq("slug", slug)
-        .eq("status", "published")
-        .maybeSingle();
+    const post = await getPublishedBlogPostBySlug(slug);
 
-    const post = postData as BlogMetadataRecord | null;
-    if (!post) return { title: "Artigo não encontrado" };
+    if (!post) {
+        return { title: "Artigo não encontrado" };
+    }
 
     const title = post.title;
-    const description =
-        post.excerpt ?? "Artigo do Blog Jurídico do Erlo, Haas & Steffens.";
+    const description = post.excerpt ?? "Artigo do Blog Jurídico do Erlo, Haas & Steffens.";
 
     const articleSchema = {
         "@context": "https://schema.org",
@@ -122,19 +98,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ArticlePage({ params }: PageProps) {
     const { slug } = await params;
-    const supabase = createAdminClient();
+    const post = await getPublishedBlogPostBySlug(slug);
 
-    const { data: postData } = await supabase
-        .from("posts")
-        .select("*, authors(*), categories(name, slug, color_hex)")
-        .eq("slug", slug)
-        .eq("status", "published")
-        .single();
-
-    const post = postData as (BlogPostSummary & { content: string }) | null;
-    if (!post) notFound();
-
-    incrementViews(post.id).catch(() => {});
+    if (!post) {
+        notFound();
+    }
 
     const publishedDate = post.published_at
         ? new Date(post.published_at).toLocaleDateString("pt-BR", {
@@ -156,6 +124,8 @@ export default async function ArticlePage({ params }: PageProps) {
 
     return (
         <div className="min-h-screen bg-[#EEEDE5]">
+            <PostViewTracker postId={post.id} />
+
             <section className="pt-32 pb-20 lg:pt-40 lg:pb-24 bg-[#0D1812] relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-80 h-80 bg-[#E8D49A]/5 rounded-full blur-[120px] pointer-events-none" />
                 <div className="absolute bottom-0 left-[35%] w-px h-32 bg-gradient-to-b from-[#E8D49A]/15 to-transparent pointer-events-none" />
@@ -220,10 +190,7 @@ export default async function ArticlePage({ params }: PageProps) {
                                 <span className="text-[#EEEDE5]/20 text-sm">·</span>
                                 <span className="flex items-center gap-1.5 text-sm text-[#EEEDE5]/50">
                                     <Eye className="h-3.5 w-3.5" />
-                                    {post.views}{" "}
-                                    {post.views === 1
-                                        ? "visualização"
-                                        : "visualizações"}
+                                    {post.views} {post.views === 1 ? "visualização" : "visualizações"}
                                 </span>
                             </>
                         )}
@@ -253,7 +220,7 @@ export default async function ArticlePage({ params }: PageProps) {
                     <article
                         className="prose-editorial max-w-2xl mx-auto"
                         dangerouslySetInnerHTML={{
-                            __html: DOMPurify.sanitize(post.content),
+                            __html: DOMPurify.sanitize(post.content ?? ""),
                         }}
                     />
                 </Container>
@@ -313,8 +280,8 @@ export default async function ArticlePage({ params }: PageProps) {
                         Precisa de orientação sobre este tema?
                     </h3>
                     <p className="text-[#EEEDE5]/50 max-w-lg mx-auto mb-8">
-                        Nossa equipe está pronta para ajudar. Entre em contato para uma
-                        análise do seu caso.
+                        Nossa equipe está pronta para ajudar. Entre em contato para uma análise
+                        do seu caso.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                         <Link

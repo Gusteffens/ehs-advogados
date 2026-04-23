@@ -2,6 +2,8 @@ import { HeroSection } from "@/components/sections/hero-section";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 
+export const revalidate = 300;
+
 const AreasSection = dynamic(() => import("@/components/sections/areas-section").then((m) => m.AreasSection), { ssr: true });
 const TeamSection = dynamic(() => import("@/components/sections/team-section").then((m) => m.TeamSection), { ssr: true });
 const BlogCtaSection = dynamic(() => import("@/components/sections/blog-cta-section").then((m) => m.BlogCtaSection), { ssr: true });

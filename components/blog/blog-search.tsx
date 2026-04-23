@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTransition, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,18 +15,35 @@ export function BlogSearch({ currentQuery }: BlogSearchProps) {
     const [isPending, startTransition] = useTransition();
     const [query, setQuery] = useState(() => currentQuery || "");
 
-    const handleSearch = (value: string) => {
-        setQuery(value);
-        const params = new URLSearchParams(searchParams.toString());
-        if (value.trim()) {
-            params.set("q", value.trim());
-        } else {
-            params.delete("q");
+    const currentUrlQuery = searchParams.get("q")?.trim() ?? "";
+
+    useEffect(() => {
+        const nextQuery = query.trim();
+
+        if (nextQuery === currentUrlQuery) {
+            return;
         }
-        startTransition(() => {
-            router.push(`/blog?${params.toString()}`, { scroll: false });
-        });
-    };
+
+        const timeoutId = window.setTimeout(() => {
+            const params = new URLSearchParams(searchParams.toString());
+
+            if (nextQuery) {
+                params.set("q", nextQuery);
+            } else {
+                params.delete("q");
+            }
+
+            const nextUrl = params.toString() ? `/blog?${params.toString()}` : "/blog";
+
+            startTransition(() => {
+                router.replace(nextUrl, { scroll: false });
+            });
+        }, 300);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+        };
+    }, [currentUrlQuery, query, router, searchParams, startTransition]);
 
     return (
         <div className={cn("relative transition-opacity duration-200", isPending && "opacity-60")}>
@@ -34,7 +51,7 @@ export function BlogSearch({ currentQuery }: BlogSearchProps) {
             <input
                 type="text"
                 value={query}
-                onChange={(e) => handleSearch(e.target.value)}
+                onChange={(e) => setQuery(e.target.value)}
                 placeholder="Pesquisar artigos..."
                 className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-[#3B5A3C]/20 bg-white text-[#0D1812] text-sm placeholder:text-[#3B5A3C]/40 focus:outline-none focus:border-[#877249]/50 focus:ring-2 focus:ring-[#E8D49A]/20 transition-all"
             />

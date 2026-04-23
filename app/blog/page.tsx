@@ -3,11 +3,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { Clock, ArrowUpRight } from "lucide-react";
 import { Container } from "@/components/ui/container";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { CategoryFilter } from "@/components/blog/category-filter";
 import { BlogSearch } from "@/components/blog/blog-search";
 import { Suspense } from "react";
-import type { BlogPostSummary, CategoryOption } from "@/types/blog";
+import { getBlogCategories, getPublishedBlogPosts } from "@/lib/data/blog";
+import type { BlogPostSummary } from "@/types/blog";
 
 export const metadata: Metadata = {
     title: "Blog Jurídico",
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
         "Artigos e análises jurídicas sobre Direito Civil, Agronegócio, Ambiental e Penal pelos advogados da Erlo, Haas & Steffens.",
 };
 
-export const revalidate = 0;
+export const revalidate = 300;
 
 const teamImages: Record<string, string> = {
     "alessandra-steffens": "/images/team/alessandra-steffens.png",
@@ -31,45 +31,18 @@ export default async function BlogPage({
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
     const resolvedParams = await searchParams;
-    const supabase = createAdminClient();
-
-    const { data: categoriesData } = await supabase
-        .from("categories")
-        .select("*")
-        .order("name");
-
-    const filteredCategories = ((categoriesData ?? []) as Array<{
-        id: number | string;
-        name: string;
-        slug: string;
-        color_hex: string | null;
-    }>)
-        .map(
-            (category) =>
-                ({
-                    id: String(category.id),
-                    name: category.name,
-                    slug: category.slug,
-                    color_hex: category.color_hex,
-                }) satisfies CategoryOption
-        )
-        .filter((category) => category.name !== "Direito Trabalhista");
+    const [filteredCategories, publishedPosts] = await Promise.all([
+        getBlogCategories(),
+        getPublishedBlogPosts(),
+    ]);
 
     const categoria = resolvedParams?.categoria as string | undefined;
     const searchQuery = (resolvedParams?.q as string | undefined)?.trim();
-
-    let query = supabase
-        .from("posts")
-        .select("*, categories!inner(*), authors(full_name, slug)")
-        .eq("status", "published")
-        .order("published_at", { ascending: false });
+    let safePosts: BlogPostSummary[] = publishedPosts;
 
     if (categoria) {
-        query = query.eq("categories.slug", categoria);
+        safePosts = safePosts.filter((post) => post.categories?.slug === categoria);
     }
-
-    const { data: postsData } = await query;
-    let safePosts = (postsData ?? []) as BlogPostSummary[];
 
     if (searchQuery) {
         const q = searchQuery.toLowerCase();

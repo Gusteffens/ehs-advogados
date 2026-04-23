@@ -1,6 +1,12 @@
 @import "tailwindcss";
 
 @variant dark (&:where(.dark, .dark *));
+ 
+:root {
+  --font-unna: "Unna";
+  --font-mulish: "Mulish";
+  --font-outfit: "Outfit";
+}
 /* ─────────────────────────────────────────────
  * Erlo Haas & Steffens — Brand Design Tokens
  * Tailwind CSS v4 @theme configuration

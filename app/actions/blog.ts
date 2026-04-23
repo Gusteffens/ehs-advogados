@@ -3,6 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { auth } from '@clerk/nextjs/server'
 import { isAdmin } from '@/lib/auth'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import slugify from 'slugify'
 import DOMPurify from 'isomorphic-dompurify'
@@ -44,6 +45,29 @@ async function requireAdminUser() {
   }
 
   return { userId }
+}
+
+function revalidatePublicBlog(slug?: string | null) {
+  revalidateTag('blog-posts', 'max')
+  revalidatePath('/')
+  revalidatePath('/blog')
+
+  if (slug) {
+    revalidatePath(`/blog/${slug}`)
+  }
+}
+
+async function getPostSlugById(
+  supabase: ReturnType<typeof createAdminClient>,
+  id: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from('posts')
+    .select('slug')
+    .eq('id', id)
+    .maybeSingle()
+
+  return data?.slug ?? null
 }
 
 export async function uploadCoverImage(formData: FormData): Promise<string> {
@@ -142,6 +166,8 @@ export async function createPost(formData: FormData) {
     throw new Error(error.message)
   }
 
+  revalidatePublicBlog(slug)
+  revalidatePath('/admin/posts')
   redirect('/admin/posts')
 }
 
@@ -154,6 +180,7 @@ export async function updatePost(id: string, formData: FormData) {
   }
 
   const supabase = createAdminClient()
+  const currentSlug = await getPostSlugById(supabase, id)
   const title = String(formData.get('title') ?? '')
   let content = String(formData.get('content') ?? '')
   content = sanitizeHtml(content)
@@ -188,6 +215,8 @@ export async function updatePost(id: string, formData: FormData) {
     throw new Error(error.message)
   }
 
+  revalidatePublicBlog(currentSlug)
+  revalidatePath('/admin/posts')
   redirect('/admin/posts')
 }
 
@@ -195,12 +224,15 @@ export async function deletePost(id: string) {
   await requireAdminUser()
 
   const supabase = createAdminClient()
+  const currentSlug = await getPostSlugById(supabase, id)
   const { error } = await supabase.from('posts').delete().eq('id', id)
 
   if (error) {
     throw new Error(error.message)
   }
 
+  revalidatePublicBlog(currentSlug)
+  revalidatePath('/admin/posts')
   redirect('/admin/posts')
 }
 
@@ -208,8 +240,25 @@ export async function incrementViews(postId: string) {
   const supabase = createAdminClient()
 
   try {
-    await supabase.rpc('increment_views', { post_id: postId })
+    const { error } = await supabase.rpc('increment_views', { post_id: postId })
+
+    if (!error) {
+      return
+    }
   } catch {
-    await supabase.from('posts').update({ views: 1 }).eq('id', postId)
+    // Fall through to the manual increment below.
   }
+
+  const { data } = await supabase
+    .from('posts')
+    .select('views')
+    .eq('id', postId)
+    .maybeSingle()
+
+  const currentViews = typeof data?.views === 'number' ? data.views : 0
+
+  await supabase
+    .from('posts')
+    .update({ views: currentViews + 1 })
+    .eq('id', postId)
 }

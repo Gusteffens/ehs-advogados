@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { hasPublicSupabaseEnv } from "@/lib/supabase/public";
 
 interface SitemapPost {
     slug: string;
@@ -16,6 +17,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         { url: "https://www.ehsadvogados.com.br/contato", priority: 0.7, changeFrequency: "monthly" },
     ];
 
+    if (!hasPublicSupabaseEnv()) {
+        return staticPages;
+    }
+
     try {
         const res = await fetch(
             `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/posts?select=slug,updated_at,published_at&status=eq.published`,
@@ -29,12 +34,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         );
         if (res.ok) {
             const posts = (await res.json()) as SitemapPost[];
-            const postPages: MetadataRoute.Sitemap = posts.map((post) => ({
-                url: `https://www.ehsadvogados.com.br/blog/${post.slug}`,
-                lastModified: new Date(post.updated_at || post.published_at),
-                priority: 0.7,
-                changeFrequency: "weekly" as const,
-            }));
+            const postPages: MetadataRoute.Sitemap = posts.map((post) => {
+                const lastModifiedSource = post.updated_at ?? post.published_at;
+
+                return {
+                    url: `https://www.ehsadvogados.com.br/blog/${post.slug}`,
+                    ...(lastModifiedSource && {
+                        lastModified: new Date(lastModifiedSource),
+                    }),
+                    priority: 0.7,
+                    changeFrequency: "weekly" as const,
+                };
+            });
             return [...staticPages, ...postPages];
         }
     } catch {

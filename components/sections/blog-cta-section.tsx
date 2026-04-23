@@ -4,19 +4,10 @@ import { Container } from "@/components/ui/container";
 import { SectionTitle } from "@/components/ui/section-title";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getLatestPublishedBlogPosts } from "@/lib/data/blog";
 
 export async function BlogCtaSection() {
-    const supabase = createAdminClient();
-
-    const { data: posts } = await supabase
-        .from("posts")
-        .select("id, title, excerpt, slug, reading_time_min, published_at, categories(name)")
-        .eq("status", "published")
-        .order("published_at", { ascending: false })
-        .limit(3);
-
-    const safePosts = posts ?? [];
+    const safePosts = await getLatestPublishedBlogPosts(3);
 
     return (
         <section className="py-24 lg:py-32 bg-[#EEEDE5] relative overflow-hidden">
@@ -52,7 +43,7 @@ export async function BlogCtaSection() {
                                     <div className="flex items-center gap-3 mb-4">
                                         <Badge variant="accent" size="sm">
                                             <Tag className="h-3 w-3 mr-1" />
-                                            {(post.categories as unknown as { name: string } | null)?.name ?? "Artigo"}
+                                            {post.categories?.name ?? "Artigo"}
                                         </Badge>
                                     </div>
 
