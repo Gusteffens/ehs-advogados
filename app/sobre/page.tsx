@@ -51,7 +51,7 @@ export default function SobrePage() {
                 <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 -mb-10 lg:-mb-16">
                     <div className="relative w-full aspect-[16/9] md:aspect-[21/9] rounded-2xl lg:rounded-t-3xl overflow-hidden shadow-2xl border border-[#3B5A3C]/20">
                         <Image
-                            src="/images/team/equipe.png"
+                            src="/images/team/equipe.webp"
                             alt="Equipe de advogados do Erlo, Haas & Steffens"
                             width={1400}
                             height={600}

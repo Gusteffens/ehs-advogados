@@ -19,14 +19,27 @@ const nextConfig: NextConfig = {
             : false,
     },
     async headers() {
+        const isDevelopment = process.env.NODE_ENV !== "production";
+        const scriptSrc = [
+            "'self'",
+            isDevelopment ? "'unsafe-eval'" : "",
+            "'unsafe-inline'",
+            "https://clerk.ehsadvogados.com.br",
+            "https://challenges.cloudflare.com",
+        ].filter(Boolean).join(" ");
+
         const ContentSecurityPolicy = `
             default-src 'self';
-            script-src 'self' 'unsafe-eval' 'unsafe-inline' https://clerk.ehsadvogados.com.br https://challenges.cloudflare.com;
-            style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-            font-src 'self' https://fonts.gstatic.com;
+            script-src ${scriptSrc};
+            style-src 'self' 'unsafe-inline';
+            font-src 'self';
             img-src 'self' data: blob: https://*.supabase.co https://img.clerk.com;
             connect-src 'self' https://*.supabase.co https://clerk.ehsadvogados.com.br https://*.posthog.com https://*.sentry.io;
+            frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com https://challenges.cloudflare.com;
             frame-ancestors 'none';
+            object-src 'none';
+            base-uri 'self';
+            form-action 'self';
         `.replace(/\n/g, ' ').trim();
 
         return [

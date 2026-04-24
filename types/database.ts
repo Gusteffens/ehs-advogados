@@ -1,80 +1,65 @@
-/* ─────────────────────────────────────────────
- * Supabase Database Types — Erlo, Haas & Steffens
- * ───────────────────────────────────────────── */
-
-export type PostStatus = 'draft' | 'published' | 'archived';
+export type PostStatus = "draft" | "published";
 
 export interface Author {
     id: string;
-    clerk_id: string;
-    name: string;
-    email: string;
+    full_name: string;
+    slug: string;
     bio: string | null;
-    photo_url: string | null;
-    specialties: string[];
-    oab_number: string | null;
+    oab: string | null;
+    specialties: string[] | null;
+    avatar_url: string | null;
     created_at: string;
-    updated_at: string;
 }
 
 export interface Category {
-    id: string;
+    id: number;
     name: string;
     slug: string;
-    description: string | null;
-    created_at: string;
+    color_hex: string | null;
 }
 
 export interface Tag {
-    id: string;
+    id: number;
     name: string;
     slug: string;
-    created_at: string;
 }
 
 export interface Post {
     id: string;
     title: string;
     slug: string;
-    excerpt: string | null;
     content: string;
+    excerpt: string | null;
     cover_image_url: string | null;
+    author_id: string | null;
+    category_id: number | null;
     status: PostStatus;
-    author_id: string;
-    category_id: string | null;
-    reading_time: number;
     published_at: string | null;
+    reading_time_min: number | null;
+    views: number;
     created_at: string;
     updated_at: string;
 }
 
 export interface PostTag {
     post_id: string;
-    tag_id: string;
-}
-
-/* ─── Join types for queries ─── */
-
-export interface PostWithAuthor extends Post {
-    author: Author;
+    tag_id: number;
 }
 
 export interface PostWithDetails extends Post {
-    author: Author;
-    category: Category | null;
-    tags: Tag[];
+    authors: Author | null;
+    categories: Category | null;
+    tags?: Tag[];
 }
 
-/* ─── Insert / Update types ─── */
+export type AuthorInsert = Omit<Author, "created_at">;
+export type AuthorUpdate = Partial<Omit<Author, "id" | "created_at">>;
 
-export type AuthorInsert = Omit<Author, 'id' | 'created_at' | 'updated_at'>;
-export type AuthorUpdate = Partial<Omit<Author, 'id' | 'clerk_id' | 'created_at'>>;
+export type CategoryInsert = Omit<Category, "id">;
+export type CategoryUpdate = Partial<Omit<Category, "id">>;
 
-export type CategoryInsert = Omit<Category, 'id' | 'created_at'>;
-export type CategoryUpdate = Partial<Omit<Category, 'id' | 'created_at'>>;
+export type TagInsert = Omit<Tag, "id">;
+export type TagUpdate = Partial<Omit<Tag, "id">>;
 
-export type TagInsert = Omit<Tag, 'id' | 'created_at'>;
-export type TagUpdate = Partial<Omit<Tag, 'id' | 'created_at'>>;
-
-export type PostInsert = Omit<Post, 'id' | 'created_at' | 'updated_at'>;
-export type PostUpdate = Partial<Omit<Post, 'id' | 'author_id' | 'created_at'>>;
+export type PostInsert = Omit<Post, "id" | "created_at" | "updated_at" | "views">;
+export type PostUpdate = Partial<Omit<Post, "id" | "created_at">>;

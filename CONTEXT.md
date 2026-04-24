@@ -97,17 +97,17 @@ post_tags: post_id FK, tag_id FK
 
 ## Imagens da Equipe
 Localizadas em `public/images/team/`:
-- `alessandra-steffens.webp` — foto formal
+- `alessandra-steffens.webp` — foto formal otimizada
 - `alessandra-mesa.jpg` — foto na mesa (usada em /equipe)
-- `jacson-erlo.webp` — foto formal
+- `jacson-erlo.webp` — foto formal otimizada
 - `jacson-mesa.jpeg` — foto na mesa
-- `jean-erlo.webp` — foto formal
+- `jean-erlo.webp` — foto formal otimizada
 - `jean-mesa.jpeg` — foto na mesa
-- `luiza-haas.webp` — foto formal
+- `luiza-haas.webp` — foto formal otimizada
 - `luiza-mesa.jpeg` — foto na mesa
-- `maisa-christ.webp` — foto formal
+- `maisa-christ.webp` — foto formal otimizada
 - `maisa-mesa.jpg` — foto na mesa (usada em /equipe)
-- `equipe.webp` — foto coletiva (usada no Hero)
+- `equipe.webp` — foto coletiva otimizada (usada no Hero e em /sobre)
 
 Logo: `public/images/logo-ehs-monogram.png` (fundo transparente)
 Logo com fundo: `public/images/logo-ehs-transparent.png`
@@ -136,6 +136,7 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ...
 # App
 NEXT_PUBLIC_SITE_URL=https://www.ehsadvogados.com.br
 CONTACT_EMAIL=ehs.escritorio@gmail.com
+CONTACT_FROM_EMAIL=Contato EHS <contato@ehsadvogados.com.br>
 
 # Opcionais (não configurados ainda)
 RESEND_API_KEY=

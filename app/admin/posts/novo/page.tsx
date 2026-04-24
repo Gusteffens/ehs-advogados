@@ -16,11 +16,11 @@ const inputClasses =
 
 const teamImages: Record<string, string> = {
     "escritorio-ehs": "/images/logo-ehs-monogram.png",
-    "alessandra-steffens": "/images/team/alessandra-steffens.png",
-    "jacson-erlo": "/images/team/jacson-erlo.png",
-    "jean-erlo": "/images/team/jean-erlo.png",
-    "luiza-haas": "/images/team/luiza-haas.png",
-    "maisa-christ": "/images/team/maisa-christ.png",
+    "alessandra-steffens": "/images/team/alessandra-steffens.webp",
+    "jacson-erlo": "/images/team/jacson-erlo.webp",
+    "jean-erlo": "/images/team/jean-erlo.webp",
+    "luiza-haas": "/images/team/luiza-haas.webp",
+    "maisa-christ": "/images/team/maisa-christ.webp",
 };
 
 interface CategorySelectOption {

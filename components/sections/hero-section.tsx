@@ -83,7 +83,7 @@ export function HeroSection() {
                       })}
             >
                 <Image
-                    src="/images/team/equipe.png"
+                    src="/images/team/equipe.webp"
                     alt="Equipe Erlo, Haas & Steffens"
                     fill
                     priority={true}

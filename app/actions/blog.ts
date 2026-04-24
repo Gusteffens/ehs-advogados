@@ -105,7 +105,7 @@ async function resolveAuthorId(
   const { data: byClerk } = await supabase
     .from('authors')
     .select('id')
-    .eq('clerk_id', clerkUserId)
+    .eq('id', clerkUserId)
     .maybeSingle()
 
   if (byClerk?.id) return byClerk.id

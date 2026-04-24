@@ -20,21 +20,21 @@ import "./globals.css";
 export const metadata: Metadata = {
     metadataBase: new URL("https://www.ehsadvogados.com.br"),
     title: {
-        default: "Erlo, Haas & Steffens | Advocacia em SÃ£o Miguel do Oeste",
+        default: "Erlo, Haas & Steffens | Advocacia em São Miguel do Oeste",
         template: "%s | Erlo, Haas & Steffens",
     },
     description:
-        "EscritÃ³rio de advocacia especializado em Direito Civil, Penal, AgronegÃ³cio e Ambiental. Atendimento em SÃ£o Miguel do Oeste - SC. OAB/SC 8487.",
+        "Escritório de advocacia especializado em Direito Civil, Penal, Agronegócio e Ambiental. Atendimento em São Miguel do Oeste - SC. OAB/SC 8487.",
     keywords: [
-        "advogado SÃ£o Miguel do Oeste",
+        "advogado São Miguel do Oeste",
         "advocacia SC",
-        "direito agronegÃ³cio Santa Catarina",
+        "direito agronegócio Santa Catarina",
         "direito civil oeste catarinense",
-        "direito penal SÃ£o Miguel do Oeste",
+        "direito penal São Miguel do Oeste",
         "direito ambiental SC",
         "Erlo, Haas Steffens",
         "OAB SC 8487",
-        "escritÃ³rio advocacia SMO",
+        "escritório advocacia SMO",
     ],
     authors: [{ name: "Erlo, Haas & Steffens Sociedade de Advocacia" }],
     creator: "Erlo, Haas & Steffens",
@@ -64,9 +64,9 @@ export const metadata: Metadata = {
         locale: "pt_BR",
         url: "https://www.ehsadvogados.com.br",
         siteName: "Erlo, Haas & Steffens Advocacia",
-        title: "Erlo, Haas & Steffens | Advocacia em SÃ£o Miguel do Oeste",
+        title: "Erlo, Haas & Steffens | Advocacia em São Miguel do Oeste",
         description:
-            "EscritÃ³rio de advocacia especializado em Direito Civil, Penal, AgronegÃ³cio e Ambiental em SÃ£o Miguel do Oeste - SC.",
+            "Escritório de advocacia especializado em Direito Civil, Penal, Agronegócio e Ambiental em São Miguel do Oeste - SC.",
         images: [
             {
                 url: "/og-image.png",
@@ -79,14 +79,14 @@ export const metadata: Metadata = {
     twitter: {
         card: "summary_large_image",
         title: "Erlo, Haas & Steffens | Advocacia",
-        description: "EscritÃ³rio de advocacia em SÃ£o Miguel do Oeste - SC.",
+        description: "Escritório de advocacia em São Miguel do Oeste - SC.",
         images: ["/og-image.png"],
     },
     alternates: {
         canonical: "https://www.ehsadvogados.com.br",
     },
     verification: {
-        google: "", // preencher apÃ³s verificar no Google Search Console
+        google: "", // preencher após verificar no Google Search Console
     },
 };
 
