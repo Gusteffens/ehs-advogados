@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import DOMPurify from "isomorphic-dompurify";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -11,6 +10,7 @@ import {
 } from "@/lib/data/blog";
 import { PostViewTracker } from "@/components/blog/post-view-tracker";
 import type { BlogAuthorSummary, BlogCategorySummary } from "@/types/blog";
+import { sanitizeBlogHtml } from "@/lib/sanitize-blog-html";
 
 export const revalidate = 300;
 
@@ -161,6 +161,7 @@ export default async function ArticlePage({ params }: PageProps) {
                                     src={authorPhoto ?? authorPhotoFallback}
                                     alt={authorName}
                                     fill
+                                    sizes="40px"
                                     className="object-cover object-center"
                                 />
                             </div>
@@ -220,7 +221,7 @@ export default async function ArticlePage({ params }: PageProps) {
                     <article
                         className="prose-editorial max-w-2xl mx-auto"
                         dangerouslySetInnerHTML={{
-                            __html: DOMPurify.sanitize(post.content ?? ""),
+                            __html: sanitizeBlogHtml(post.content ?? ""),
                         }}
                     />
                 </Container>
@@ -235,6 +236,7 @@ export default async function ArticlePage({ params }: PageProps) {
                                     src={authorPhoto ?? authorPhotoFallback}
                                     alt={authorName}
                                     fill
+                                    sizes="80px"
                                     className="object-cover object-center"
                                 />
                             </div>

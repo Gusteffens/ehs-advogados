@@ -110,6 +110,7 @@ export default async function BlogPage({
                                         alt={featuredPost.title}
                                         fill
                                         priority
+                                        sizes="(max-width: 1024px) 100vw, 50vw"
                                         className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
                                     />
                                 ) : (
@@ -161,6 +162,7 @@ export default async function BlogPage({
                                                             "Autor"
                                                         }
                                                         fill
+                                                        sizes="32px"
                                                         className="object-cover object-top"
                                                     />
                                                 </div>
@@ -227,6 +229,7 @@ export default async function BlogPage({
                                                     src={post.cover_image_url}
                                                     alt={post.title}
                                                     fill
+                                                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                                                     className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.04]"
                                                 />
                                             ) : (
@@ -273,6 +276,7 @@ export default async function BlogPage({
                                                                 src={authorPhoto}
                                                                 alt={authorName}
                                                                 fill
+                                                                sizes="28px"
                                                                 className="object-cover object-top"
                                                             />
                                                         </div>

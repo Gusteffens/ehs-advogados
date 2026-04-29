@@ -261,6 +261,7 @@ export function EditPostForm({ post }: { post: EditablePost }) {
                                     src={coverPreview}
                                     alt="Capa Preview"
                                     fill
+                                    sizes="(max-width: 1024px) 100vw, 33vw"
                                     className="object-cover"
                                 />
                             </div>
@@ -294,6 +295,7 @@ export function EditPostForm({ post }: { post: EditablePost }) {
                                         src={selectedAuthorPhoto}
                                         alt={selectedAuthor.full_name}
                                         fill
+                                        sizes="40px"
                                         className="object-cover object-top"
                                     />
                                 </div>

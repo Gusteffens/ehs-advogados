@@ -20,11 +20,16 @@ const nextConfig: NextConfig = {
     },
     async headers() {
         const isDevelopment = process.env.NODE_ENV !== "production";
+        const clerkSources = [
+            "https://clerk.ehsadvogados.com.br",
+            "https://*.clerk.accounts.dev",
+            "https://*.clerk.com",
+        ];
         const scriptSrc = [
             "'self'",
             isDevelopment ? "'unsafe-eval'" : "",
             "'unsafe-inline'",
-            "https://clerk.ehsadvogados.com.br",
+            ...clerkSources,
             "https://challenges.cloudflare.com",
         ].filter(Boolean).join(" ");
 
@@ -33,9 +38,9 @@ const nextConfig: NextConfig = {
             script-src ${scriptSrc};
             style-src 'self' 'unsafe-inline';
             font-src 'self';
-            img-src 'self' data: blob: https://*.supabase.co https://img.clerk.com;
-            connect-src 'self' https://*.supabase.co https://clerk.ehsadvogados.com.br https://*.posthog.com https://*.sentry.io;
-            frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com https://challenges.cloudflare.com;
+            img-src 'self' data: blob: https://*.supabase.co https://img.clerk.com https://*.clerk.com https://*.clerk.accounts.dev;
+            connect-src 'self' https://*.supabase.co ${clerkSources.join(" ")} https://*.posthog.com https://*.sentry.io;
+            frame-src 'self' ${clerkSources.join(" ")} https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com https://challenges.cloudflare.com;
             frame-ancestors 'none';
             object-src 'none';
             base-uri 'self';

@@ -6,36 +6,38 @@ import { isAdmin } from '@/lib/auth'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import slugify from 'slugify'
-import DOMPurify from 'isomorphic-dompurify'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
+import { sanitizeBlogHtml } from '@/lib/sanitize-blog-html'
 
-const ratelimit = new Ratelimit({
-  redis: Redis.fromEnv(),
-  limiter: Ratelimit.slidingWindow(10, '1 m'),
-})
+let blogActionRatelimit: Ratelimit | null = null
 
-const sanitizeHtml = (html: string) =>
-  DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: [
-      'p',
-      'br',
-      'strong',
-      'em',
-      'u',
-      's',
-      'h2',
-      'h3',
-      'ul',
-      'ol',
-      'li',
-      'blockquote',
-      'a',
-      'img',
-      'hr',
-    ],
-    ALLOWED_ATTR: ['href', 'src', 'alt', 'target', 'rel'],
+function getBlogActionRatelimit() {
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    return null
+  }
+
+  blogActionRatelimit ??= new Ratelimit({
+    redis: Redis.fromEnv(),
+    limiter: Ratelimit.slidingWindow(10, '1 m'),
   })
+
+  return blogActionRatelimit
+}
+
+async function enforceBlogActionRatelimit(userId: string) {
+  const ratelimit = getBlogActionRatelimit()
+
+  if (!ratelimit) {
+    return
+  }
+
+  const { success } = await ratelimit.limit(`blog_action_${userId}`)
+
+  if (!success) {
+    throw new Error('Muitas operações. Tente novamente.')
+  }
+}
 
 async function requireAdminUser() {
   const { userId, sessionClaims } = await auth()
@@ -122,16 +124,12 @@ async function resolveAuthorId(
 
 export async function createPost(formData: FormData) {
   const { userId } = await requireAdminUser()
-  const { success } = await ratelimit.limit(`blog_action_${userId}`)
-
-  if (!success) {
-    throw new Error('Muitas operações. Tente novamente.')
-  }
+  await enforceBlogActionRatelimit(userId)
 
   const supabase = createAdminClient()
   const title = String(formData.get('title') ?? '')
   let content = String(formData.get('content') ?? '')
-  content = sanitizeHtml(content)
+  content = sanitizeBlogHtml(content)
 
   const excerpt = String(formData.get('excerpt') ?? '')
   const category_id = String(formData.get('category_id') ?? '')
@@ -173,17 +171,13 @@ export async function createPost(formData: FormData) {
 
 export async function updatePost(id: string, formData: FormData) {
   const { userId } = await requireAdminUser()
-  const { success } = await ratelimit.limit(`blog_action_${userId}`)
-
-  if (!success) {
-    throw new Error('Muitas operações. Tente novamente.')
-  }
+  await enforceBlogActionRatelimit(userId)
 
   const supabase = createAdminClient()
   const currentSlug = await getPostSlugById(supabase, id)
   const title = String(formData.get('title') ?? '')
   let content = String(formData.get('content') ?? '')
-  content = sanitizeHtml(content)
+  content = sanitizeBlogHtml(content)
 
   const excerpt = String(formData.get('excerpt') ?? '')
   const category_id = String(formData.get('category_id') ?? '')
