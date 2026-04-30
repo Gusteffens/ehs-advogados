@@ -72,6 +72,42 @@ async function getPostSlugById(
   return data?.slug ?? null
 }
 
+async function getUniquePostSlug(
+  supabase: ReturnType<typeof createAdminClient>,
+  title: string
+): Promise<string> {
+  const baseSlug = slugify(title, {
+    lower: true,
+    strict: true,
+    locale: 'pt',
+  }) || `artigo-${Date.now()}`
+
+  const { data, error } = await supabase
+    .from('posts')
+    .select('slug')
+    .or(`slug.eq.${baseSlug},slug.like.${baseSlug}-%`)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const existingSlugs = new Set((data ?? []).map((post) => post.slug))
+
+  if (!existingSlugs.has(baseSlug)) {
+    return baseSlug
+  }
+
+  let suffix = 2
+  let candidate = `${baseSlug}-${suffix}`
+
+  while (existingSlugs.has(candidate)) {
+    suffix += 1
+    candidate = `${baseSlug}-${suffix}`
+  }
+
+  return candidate
+}
+
 export async function uploadCoverImage(formData: FormData): Promise<string> {
   await requireAdminUser()
 
@@ -138,11 +174,7 @@ export async function createPost(formData: FormData) {
   const formAuthorId = String(formData.get('author_id') ?? '')
 
   const author_id = await resolveAuthorId(supabase, formAuthorId, userId)
-  const slug = slugify(title, {
-    lower: true,
-    strict: true,
-    locale: 'pt',
-  })
+  const slug = await getUniquePostSlug(supabase, title)
 
   const words = content.replace(/<[^>]*>/g, '').split(/\s+/).filter(Boolean).length
   const reading_time_min = Math.ceil(words / 200)
