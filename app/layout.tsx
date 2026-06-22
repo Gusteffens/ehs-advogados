@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
 import { PostHogProvider } from "@/components/providers/posthog-provider";
 import { SiteShell } from "@/components/layout/site-shell";
@@ -102,6 +103,22 @@ export default function RootLayout({
                 <JsonLd />
             </head>
             <body className="antialiased grain-overlay">
+                <Script
+                    strategy="afterInteractive"
+                    src="https://www.googletagmanager.com/gtag/js?id=AW-17985986753"
+                />
+                <Script
+                    id="google-ads"
+                    strategy="afterInteractive"
+                    dangerouslySetInnerHTML={{
+                        __html: `
+                            window.dataLayer = window.dataLayer || [];
+                            function gtag(){dataLayer.push(arguments);}
+                            gtag('js', new Date());
+                            gtag('config', 'AW-17985986753');
+                        `,
+                    }}
+                />
                 <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
                     <PostHogProvider>
                         <SiteShell>{children}</SiteShell>
