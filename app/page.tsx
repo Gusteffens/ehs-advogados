@@ -7,6 +7,7 @@ export const revalidate = 300;
 const AreasSection = dynamic(() => import("@/components/sections/areas-section").then((m) => m.AreasSection), { ssr: true });
 const TeamSection = dynamic(() => import("@/components/sections/team-section").then((m) => m.TeamSection), { ssr: true });
 const BlogCtaSection = dynamic(() => import("@/components/sections/blog-cta-section").then((m) => m.BlogCtaSection), { ssr: true });
+const InstagramSection = dynamic(() => import("@/components/sections/instagram-section").then((m) => m.InstagramSection), { ssr: true });
 const CtaSection = dynamic(() => import("@/components/sections/cta-section").then((m) => m.CtaSection), { ssr: true });
 
 export default function Home() {
@@ -17,6 +18,7 @@ export default function Home() {
                 <AreasSection />
                 <TeamSection />
                 <BlogCtaSection />
+                <InstagramSection />
                 <CtaSection />
             </Suspense>
         </>
