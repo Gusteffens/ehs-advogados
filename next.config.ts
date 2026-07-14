@@ -18,6 +18,15 @@ const nextConfig: NextConfig = {
             ? { exclude: ["error", "warn"] }
             : false,
     },
+    async redirects() {
+        return [
+            {
+                source: "/proagro-negado",
+                destination: "/proagro",
+                permanent: true,
+            },
+        ];
+    },
     async headers() {
         const isDevelopment = process.env.NODE_ENV !== "production";
         const clerkSources = [
