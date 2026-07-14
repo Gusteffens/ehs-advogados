@@ -112,12 +112,6 @@ Localizadas em `public/images/team/`:
 Logo: `public/images/logo-ehs-monogram.png` (fundo transparente)
 Logo com fundo: `public/images/logo-ehs-transparent.png`
 
-## Problemas Conhecidos e Pendentes
-1. **CRÍTICO — Performance:** Site está muito lento em produção (~20s TTFB em algumas páginas). Suspeita: imagens grandes sendo otimizadas em runtime pelo serverless da Vercel. Imagens já foram convertidas para WebP mas o problema persiste. Investigar causa raiz.
-2. **Upload de imagem no Tiptap:** Retorna erro de RLS ao tentar fazer upload para o bucket `blog-images`. Verificar políticas do Storage no Supabase.
-3. **Embed de YouTube:** Bloqueado pelo X-Frame-Options. Investigar conflito entre header e CSP.
-4. **Clerk no localhost:** Ambiente de desenvolvimento do Clerk foi desativado ao subir para produção. Criar novo ambiente de dev e atualizar chaves no .env.local.
-
 ## Variáveis de Ambiente Necessárias
 ```env
 # Clerk (produção)
