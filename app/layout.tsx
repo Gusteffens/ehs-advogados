@@ -102,9 +102,7 @@ export default function RootLayout({
                 <link rel="preconnect" href="https://clerk.ehsadvogados.com.br" />
                 <JsonLd />
                 {/* Meta Pixel Code */}
-                <Script
-                    id="meta-pixel"
-                    strategy="afterInteractive"
+                <script
                     dangerouslySetInnerHTML={{
                         __html: `
                             !function(f,b,e,v,n,t,s)
