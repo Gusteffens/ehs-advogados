@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import crypto from "crypto";
 
 export interface ContactFormState {
   success: boolean;
@@ -84,6 +85,55 @@ export async function submitContactForm(
       subject: `[Site] ${parsed.data.subject || "Novo contato"} - ${parsed.data.name}`,
       text: `Nome: ${parsed.data.name}\nEmail: ${parsed.data.email}\nTelefone: ${parsed.data.phone || "Não informado"}\nAssunto: ${parsed.data.subject || "Não informado"}\n\nMensagem:\n${parsed.data.message}`,
     });
+
+    // Enviar evento para a API de Conversões da Meta (CAPI)
+    const pixelId = "2487931431710589";
+    const accessToken = process.env.META_PIXEL_ACCESS_TOKEN;
+    if (accessToken) {
+      try {
+        const cleanEmail = parsed.data.email.trim().toLowerCase();
+        const emailHash = crypto.createHash("sha256").update(cleanEmail).digest("hex");
+        
+        let phoneHash: string | undefined;
+        if (parsed.data.phone) {
+          // Remover caracteres não numéricos
+          const cleanPhone = parsed.data.phone.replace(/\D/g, "");
+          if (cleanPhone) {
+            phoneHash = crypto.createHash("sha256").update(cleanPhone).digest("hex");
+          }
+        }
+
+        const { headers } = await import("next/headers");
+        const headersList = await headers();
+        const userAgent = headersList.get("user-agent") || "";
+        const ip = headersList.get("x-real-ip")
+          ?? headersList.get("x-forwarded-for")?.split(",")[0].trim()
+          ?? "127.0.0.1";
+
+        fetch(`https://graph.facebook.com/v18.0/${pixelId}/events?access_token=${accessToken}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            data: [
+              {
+                event_name: "Contact",
+                event_time: Math.floor(Date.now() / 1000),
+                action_source: "website",
+                event_source_url: "https://www.ehsadvogados.com.br/contato",
+                user_data: {
+                  em: [emailHash],
+                  ph: phoneHash ? [phoneHash] : undefined,
+                  client_ip_address: ip,
+                  client_user_agent: userAgent,
+                },
+              },
+            ],
+          }),
+        }).catch((err) => console.error("Error sending event to Meta CAPI:", err));
+      } catch (capiError) {
+        console.error("Failed to prepare Meta CAPI event:", capiError);
+      }
+    }
 
     return {
       success: true,
