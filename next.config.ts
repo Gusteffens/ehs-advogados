@@ -47,6 +47,14 @@ const nextConfig: NextConfig = {
             "https://*.facebook.net",
             "https://facebook.com",
             "https://www.googletagmanager.com",
+            "https://www.google-analytics.com",
+            "https://ssl.google-analytics.com",
+            "https://www.googleadservices.com",
+            "https://*.googleadservices.com",
+            "https://googleads.g.doubleclick.net",
+            "https://*.doubleclick.net",
+            "https://*.google.com",
+            "https://*.google.com.br",
             "https://static.cloudflareinsights.com",
         ].filter(Boolean).join(" ");
 
@@ -55,10 +63,10 @@ const nextConfig: NextConfig = {
             script-src ${scriptSrc};
             style-src 'self' 'unsafe-inline';
             font-src 'self';
-            img-src 'self' data: blob: https://*.supabase.co https://img.clerk.com https://*.clerk.com https://*.clerk.accounts.dev https://*.instagram.com https://*.cdninstagram.com https://*.fbcdn.net https://www.facebook.com https://pixel.facebook.com https://*.facebook.com https://*.facebook.net https://facebook.com https://www.google-analytics.com https://www.googletagmanager.com https://google.com https://www.google.com https://www.google.com.br;
-            connect-src 'self' https://*.supabase.co ${clerkSources.join(" ")} https://*.posthog.com https://*.sentry.io https://*.instagram.com https://www.facebook.com https://connect.facebook.net https://graph.facebook.com https://pixel.facebook.com https://*.facebook.com https://*.facebook.net https://facebook.com https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://www.google.com https://cloudflareinsights.com https://*.cloudflareinsights.com;
-            frame-src 'self' ${clerkSources.join(" ")} https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com https://maps.google.com https://*.google.com https://challenges.cloudflare.com https://www.instagram.com https://*.instagram.com https://www.googletagmanager.com https://*.facebook.com https://*.facebook.net https://facebook.com;
-            frame-ancestors 'self' https://*.facebook.com https://*.facebook.net https://facebook.com;
+            img-src 'self' data: blob: https://*.supabase.co https://img.clerk.com https://*.clerk.com https://*.clerk.accounts.dev https://*.instagram.com https://*.cdninstagram.com https://*.fbcdn.net https://www.facebook.com https://pixel.facebook.com https://*.facebook.com https://*.facebook.net https://facebook.com https://www.google-analytics.com https://www.googletagmanager.com https://google.com https://www.google.com https://www.google.com.br https://*.google.com https://*.google.com.br https://www.googleadservices.com https://*.googleadservices.com https://googleads.g.doubleclick.net https://*.doubleclick.net;
+            connect-src 'self' https://*.supabase.co ${clerkSources.join(" ")} https://*.posthog.com https://*.sentry.io https://*.instagram.com https://www.facebook.com https://connect.facebook.net https://graph.facebook.com https://pixel.facebook.com https://*.facebook.com https://*.facebook.net https://facebook.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net https://www.googletagmanager.com https://www.google.com https://www.google.com.br https://*.google.com https://*.google.com.br https://www.googleadservices.com https://*.googleadservices.com https://googleads.g.doubleclick.net https://*.doubleclick.net https://cloudflareinsights.com https://*.cloudflareinsights.com;
+            frame-src 'self' ${clerkSources.join(" ")} https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com https://maps.google.com https://*.google.com https://*.google.com.br https://challenges.cloudflare.com https://www.instagram.com https://*.instagram.com https://www.googletagmanager.com https://*.facebook.com https://*.facebook.net https://facebook.com https://tagassistant.google.com https://*.doubleclick.net;
+            frame-ancestors 'self' https://*.facebook.com https://*.facebook.net https://facebook.com https://tagassistant.google.com https://*.google.com https://*.google.com.br;
             object-src 'none';
             base-uri 'self';
             form-action 'self';
