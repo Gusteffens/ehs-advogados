@@ -1,18 +1,64 @@
 @import "tailwindcss";
 
 @variant dark (&:where(.dark, .dark *));
- 
+
 :root {
   --font-unna: "Unna";
   --font-mulish: "Mulish";
   --font-outfit: "Outfit";
+
+  /* Brand CSS custom properties (available outside Tailwind utilities too) */
+  --color-cream: #EEEDE5;
+  --color-cream-light: #F9F8F5;
+  --color-ink: #0D1812;
+  --color-primary: #1B2D1E;
+  --color-primary-mid: #3B5A3C;
+  --color-gold: #E8D49A;
+  --color-gold-dark: #877249;
+  --color-secondary: #877249;
 }
+
 /* ─────────────────────────────────────────────
- * Erlo Haas & Steffens — Brand Design Tokens
+ * Erlo, Haas & Steffens — Brand Design Tokens
  * Tailwind CSS v4 @theme configuration
  * ───────────────────────────────────────────── */
 
 @theme inline {
+  /* ── Brand Semantic Colors ── */
+  --color-cream: var(--color-cream);
+  --color-cream-light: var(--color-cream-light);
+  --color-ink: var(--color-ink);
+  --color-primary: var(--color-primary);
+  --color-primary-mid: var(--color-primary-mid);
+  --color-gold: var(--color-gold);
+  --color-gold-dark: var(--color-gold-dark);
+  --color-secondary: var(--color-secondary);
+
+  /* ── Forest Scale (Brand Greens) ── */
+  --color-forest-50: #F0F4F0;
+  --color-forest-100: #DCE5DC;
+  --color-forest-200: #BDCEBE;
+  --color-forest-300: #8FA991;
+  --color-forest-400: #678B6A;
+  --color-forest-500: #4A704D;
+  --color-forest-600: #3B5A3C;
+  --color-forest-700: #2D4A31;
+  --color-forest-800: #233A27;
+  --color-forest-900: #1B2D1E;
+  --color-forest-950: #0D1812;
+
+  /* ── Champagne / Gold Scale ── */
+  --color-champagne-50: #FCF9F0;
+  --color-champagne-100: #F7EED7;
+  --color-champagne-200: #F0DFB3;
+  --color-champagne-300: #E8D49A;
+  --color-champagne-400: #D4BC78;
+  --color-champagne-500: #C9B06A;
+  --color-champagne-600: #A68B4E;
+  --color-champagne-700: #877249;
+  --color-champagne-800: #695838;
+  --color-champagne-900: #4A3E27;
+
   /* ── Font Families ── */
   --font-display: var(--font-unna), "Georgia", serif;
   --font-body: var(--font-mulish), "Helvetica Neue", sans-serif;
@@ -26,7 +72,6 @@
   --animate-slide-down: slide-down 0.5s ease-out both;
   --animate-scale-in: scale-in 0.4s ease-out both;
   --animate-rotate-words: rotate-words 8s ease-in-out infinite;
-  --animate-grain: grain 0.5s steps(1) infinite;
   --animate-shimmer: shimmer 2s linear infinite;
   --animate-pulse-soft: pulse-soft 3s ease-in-out infinite;
 }
@@ -80,7 +125,6 @@
 }
 
 @keyframes rotate-words {
-
   0%,
   20% {
     opacity: 0;
@@ -100,50 +144,6 @@
   }
 }
 
-@keyframes grain {
-
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-
-  10% {
-    transform: translate(-5%, -10%);
-  }
-
-  20% {
-    transform: translate(-15%, 5%);
-  }
-
-  30% {
-    transform: translate(7%, -25%);
-  }
-
-  40% {
-    transform: translate(-5%, 25%);
-  }
-
-  50% {
-    transform: translate(-15%, 10%);
-  }
-
-  60% {
-    transform: translate(15%, 0%);
-  }
-
-  70% {
-    transform: translate(0%, 15%);
-  }
-
-  80% {
-    transform: translate(3%, 35%);
-  }
-
-  90% {
-    transform: translate(-10%, 10%);
-  }
-}
-
 @keyframes shimmer {
   0% {
     background-position: -200% 0;
@@ -155,7 +155,6 @@
 }
 
 @keyframes pulse-soft {
-
   0%,
   100% {
     opacity: 1;
@@ -166,11 +165,21 @@
   }
 }
 
+@keyframes marquee-loop {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
 /* ── Base Styles ── */
 
 ::selection {
-  background-color: #E8D49A;
-  color: #0D1812;
+  background-color: var(--color-gold);
+  color: var(--color-ink);
 }
 
 html {
@@ -180,25 +189,11 @@ html {
 }
 
 body {
-  background-color: #EEEDE5;
-  color: #0D1812;
+  background-color: var(--color-cream);
+  color: var(--color-ink);
   font-family: var(--font-body);
   line-height: 1.7;
   overflow-x: hidden;
-}
-
-/* ── Custom Golden Cursor ── */
-
-* {
-  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='10' cy='10' r='3' fill='%23E8D49A' opacity='0.8'/%3E%3Ccircle cx='10' cy='10' r='6' fill='none' stroke='%23E8D49A' stroke-width='1' opacity='0.4'/%3E%3C/svg%3E") 10 10, auto;
-}
-
-a,
-button,
-[role="button"],
-input[type="submit"],
-select {
-  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='12' cy='12' r='4' fill='%23E8D49A' opacity='0.9'/%3E%3Ccircle cx='12' cy='12' r='8' fill='none' stroke='%23E8D49A' stroke-width='1.5' opacity='0.5'/%3E%3C/svg%3E") 12 12, pointer;
 }
 
 /* ── Custom Scrollbar ── */
@@ -208,44 +203,121 @@ select {
 }
 
 ::-webkit-scrollbar-track {
-  background: #EEEDE5;
+  background: var(--color-cream);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #E8D49A;
+  background: var(--color-gold);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #877249;
+  background: var(--color-gold-dark);
 }
 
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #E8D49A #EEEDE5;
+  scrollbar-color: var(--color-gold) var(--color-cream);
 }
 
-/* ── Grain Noise Overlay ── */
+/* ── Subtle Static Grain Overlay ── */
 
 .grain-overlay::before {
   content: "";
   position: fixed;
-  inset: -50%;
-  width: 200%;
-  height: 200%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  opacity: 0.03;
+  opacity: 0.025;
   pointer-events: none;
   z-index: 1;
-  animation: var(--animate-grain);
 }
 
-/* Disable grain on mobile — feTurbulence is CPU-rasterized and kills perf */
-@media (max-width: 768px) {
+/* Disable grain on mobile and reduced-motion preferences */
+@media (max-width: 768px), (prefers-reduced-motion: reduce) {
   .grain-overlay::before {
     display: none;
   }
+}
+
+/* ── Instagram Marquee Utilities ── */
+
+.marquee-content {
+  animation: marquee-loop 45s linear infinite;
+}
+
+.marquee-content:hover,
+.marquee-content:focus-within {
+  animation-play-state: paused;
+}
+
+.mask-gradient::before,
+.mask-gradient::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 120px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.mask-gradient::before {
+  left: 0;
+  background: linear-gradient(to right, var(--color-cream-light) 10%, transparent 100%);
+}
+
+.mask-gradient::after {
+  right: 0;
+  background: linear-gradient(to left, var(--color-cream-light) 10%, transparent 100%);
+}
+
+@media (max-width: 768px) {
+  .mask-gradient::before,
+  .mask-gradient::after {
+    width: 50px;
+  }
+
+  .marquee-content {
+    animation-duration: 35s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .marquee-content {
+    animation: none;
+  }
+}
+
+/* ── Eased Multi-Stop Fade to Cream (#EEEDE5) ── */
+
+.fade-to-cream {
+  background: linear-gradient(
+    to bottom,
+    rgba(238, 237, 229, 0) 0%,
+    rgba(238, 237, 229, 0.013) 7.3%,
+    rgba(238, 237, 229, 0.049) 14%,
+    rgba(238, 237, 229, 0.104) 20.3%,
+    rgba(238, 237, 229, 0.175) 26.1%,
+    rgba(238, 237, 229, 0.259) 31.8%,
+    rgba(238, 237, 229, 0.352) 37.1%,
+    rgba(238, 237, 229, 0.45) 42.4%,
+    rgba(238, 237, 229, 0.55) 47.6%,
+    rgba(238, 237, 229, 0.648) 52.9%,
+    rgba(238, 237, 229, 0.741) 58.2%,
+    rgba(238, 237, 229, 0.825) 63.9%,
+    rgba(238, 237, 229, 0.896) 69.8%,
+    rgba(238, 237, 229, 0.951) 76.1%,
+    rgba(238, 237, 229, 0.987) 82.7%,
+    #eeede5 90%,
+    #eeede5 100%
+  );
 }
 
 /* ── Typography Utilities ── */
@@ -261,22 +333,20 @@ h6 {
   letter-spacing: -0.01em;
 }
 
-
-
 /* ── Editorial Blog Styles ── */
 
 .prose-editorial {
   font-family: var(--font-body);
   font-size: 1.125rem;
   line-height: 1.85;
-  color: #0D1812;
+  color: var(--color-ink);
 }
 
 .prose-editorial h2 {
   font-family: var(--font-display);
   font-size: 1.5rem;
   font-weight: 700;
-  color: #0D1812;
+  color: var(--color-ink);
   margin-top: 2rem;
   margin-bottom: 1rem;
   letter-spacing: -0.02em;
@@ -286,18 +356,18 @@ h6 {
   font-family: var(--font-display);
   font-size: 1.25rem;
   font-weight: 600;
-  color: #1B2D1E;
+  color: var(--color-primary);
   margin-top: 1.5rem;
   margin-bottom: 0.75rem;
 }
 
 .prose-editorial p {
   margin-bottom: 1.25rem;
-  color: #0D1812;
+  color: var(--color-ink);
 }
 
 .prose-editorial a {
-  color: #877249;
+  color: var(--color-gold-dark);
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
@@ -305,14 +375,14 @@ h6 {
 }
 
 .prose-editorial a:hover {
-  color: #E8D49A;
+  color: var(--color-gold);
 }
 
 .prose-editorial blockquote {
-  border-left: 3px solid #E8D49A;
+  border-left: 3px solid var(--color-gold);
   padding-left: 1rem;
   font-style: italic;
-  color: #3B5A3C;
+  color: var(--color-primary-mid);
   margin: 1.5rem 0;
 }
 
@@ -324,11 +394,11 @@ h6 {
 
 .prose-editorial li {
   margin-bottom: 0.4rem;
-  color: #0D1812;
+  color: var(--color-ink);
 }
 
 .prose-editorial li::marker {
-  color: #877249;
+  color: var(--color-gold-dark);
 }
 
 .prose-editorial img {
@@ -339,7 +409,7 @@ h6 {
 .prose-editorial hr {
   border: none;
   height: 1px;
-  background: linear-gradient(90deg, transparent, #E8D49A, transparent);
+  background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
   margin: 3em 0;
 }
 

@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EHS Advocacia — Erlo, Haas & Steffens
 
-## Getting Started
+Site institucional, landing pages jurídicas, blog editorial e painel administrativo do escritório **Erlo, Haas & Steffens Sociedade de Advocacia** (`https://www.ehsadvogados.com.br`).
 
-First, run the development server:
+## Stack Técnica
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Framework:** Next.js 16 (App Router + `proxy.ts`) + React 19 + TypeScript
+- **Estilização:** Tailwind CSS v4 (design tokens em `app/globals.css`) + Fontes locais (`@fontsource/unna`, `@fontsource/mulish`)
+- **Autenticação:** Clerk (`@clerk/nextjs` v7) isolado nas rotas administrativas (`/admin`, `/sign-in`)
+- **Banco de Dados & Storage:** Supabase (`@supabase/supabase-js`) com Row-Level Security (RLS)
+- **Editor de Blog:** TipTap v3 + sanitização server-side com `sanitize-html`
+- **E-mail & Rate Limiting:** Resend + Upstash Redis
+- **Analytics:** PostHog + Meta Conversions API (CAPI)
+- **Deploy:** Vercel (Node.js `>=20`)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Estrutura Principal
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `app/(site)/` — Site institucional e blog público (`/`, `/sobre`, `/equipe`, `/areas-de-atuacao`, `/blog`, `/contato`, `/politica-de-privacidade`, `/termos-de-uso`)
+- `app/(landing)/` — Landing pages isoladas (`/penal`, `/proagro`)
+- `app/admin/` — Painel administrativo protegido (`role: admin`)
+- `app/sign-in/` e `app/unauthorized/` — Fluxo de login e acesso negado
+- `proxy.ts` — Proteção de rotas Next.js 16 (bloqueio de `/sign-up` e guarda de `/admin/*`)
+- `lib/` — Configurações (`site-config.ts`), clientes Supabase (`public.ts`, `admin.ts`), integrações e camada de dados
+- `supabase/migrations/` — Migrations SQL (RLS, políticas de Storage e RPC `increment_post_views`)
+- `supabase/seed.sql` — Seed idempotente de autores e tabela `instagram_config`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Setup Local
 
-## Learn More
+1. **Pré-requisitos:** Node.js `>=20` e npm.
+2. **Instalar dependências:**
+   ```bash
+   npm install
+   ```
+3. **Configurar variáveis de ambiente:**
+   Copie `.env.example` para `.env.local` e preencha os valores reais:
+   ```bash
+   cp .env.example .env.local
+   ```
+4. **Aplicar banco de dados (Supabase):**
+   Execute no Supabase SQL Editor (ou via Supabase CLI):
+   - `supabase/migrations/001_security_rls_and_rpc.sql` (políticas RLS, Storage `blog-covers` e RPC `increment_post_views`)
+   - `supabase/seed.sql` (seed idempotente de autores e `instagram_config`)
+5. **Iniciar servidor de desenvolvimento:**
+   ```bash
+   npm run dev
+   ```
+   Acesse [http://localhost:3000](http://localhost:3000).
 
-To learn more about Next.js, take a look at the following resources:
+## Scripts Disponíveis
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Script | Descrição |
+| --- | --- |
+| `npm run dev` | Inicia o servidor de desenvolvimento Next.js |
+| `npm run build` | Gera o build de produção |
+| `npm run start` | Executa o servidor de produção |
+| `npm run typecheck` | Valida tipagem TypeScript (`tsc --noEmit`) |
+| `npm run lint` | Executa análise estática com ESLint |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Variáveis de Ambiente
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Todas as variáveis suportadas estão documentadas em [`.env.example`](./.env.example). Nunca faça commit de arquivos `.env*` com credenciais reais.

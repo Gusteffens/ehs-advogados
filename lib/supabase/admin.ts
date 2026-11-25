@@ -1,4 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
+import "server-only";
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database";
 
 /**
  * Admin Supabase client with service role key.
@@ -6,21 +8,20 @@ import { createClient } from '@supabase/supabase-js';
  * This bypasses Row Level Security.
  */
 export function createAdminClient() {
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-        throw new Error('NEXT_PUBLIC_SUPABASE_URL is required to initialize Admin Client')
-    }
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        throw new Error('SUPABASE_SERVICE_ROLE_KEY is required to initialize Admin Client')
-    }
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    return createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        {
-            auth: {
-                autoRefreshToken: false,
-                persistSession: false,
-            },
-        },
-    );
+  if (!url) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL is required to initialize Admin Client");
+  }
+  if (!serviceRoleKey) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is required to initialize Admin Client");
+  }
+
+  return createClient<Database>(url, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
 }

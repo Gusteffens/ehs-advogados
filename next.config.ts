@@ -1,5 +1,20 @@
 import type { NextConfig } from "next";
 
+function getSupabaseHostname(): string {
+    const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (rawUrl) {
+        try {
+            return new URL(rawUrl).hostname;
+        } catch {
+            // Fallback to default project host when env var is invalid
+        }
+    }
+    return "kypsmdjogvvvwornxmqp.supabase.co";
+}
+
+const supabaseHostname = getSupabaseHostname();
+const supabaseOrigin = `https://${supabaseHostname}`;
+
 const nextConfig: NextConfig = {
     images: {
         formats: ["image/avif", "image/webp"],
@@ -8,7 +23,7 @@ const nextConfig: NextConfig = {
         remotePatterns: [
             {
                 protocol: "https",
-                hostname: "kypsmdjogvvvwornxmqp.supabase.co",
+                hostname: supabaseHostname,
                 pathname: "/storage/v1/object/public/**",
             },
         ],
@@ -34,6 +49,11 @@ const nextConfig: NextConfig = {
             "https://*.clerk.accounts.dev",
             "https://*.clerk.com",
         ];
+        const facebookSources = [
+            "https://facebook.com",
+            "https://*.facebook.com",
+            "https://*.facebook.net",
+        ];
         const scriptSrc = [
             "'self'",
             isDevelopment ? "'unsafe-eval'" : "",
@@ -42,10 +62,7 @@ const nextConfig: NextConfig = {
             "https://challenges.cloudflare.com",
             "https://www.instagram.com",
             "https://*.instagram.com",
-            "https://connect.facebook.net",
-            "https://*.facebook.com",
-            "https://*.facebook.net",
-            "https://facebook.com",
+            ...facebookSources,
             "https://www.googletagmanager.com",
             "https://static.cloudflareinsights.com",
         ].filter(Boolean).join(" ");
@@ -55,24 +72,24 @@ const nextConfig: NextConfig = {
             script-src ${scriptSrc};
             style-src 'self' 'unsafe-inline';
             font-src 'self';
-            img-src 'self' data: blob: https://*.supabase.co https://img.clerk.com https://*.clerk.com https://*.clerk.accounts.dev https://*.instagram.com https://*.cdninstagram.com https://*.fbcdn.net https://www.facebook.com https://pixel.facebook.com https://*.facebook.com https://*.facebook.net https://facebook.com https://www.google-analytics.com https://www.googletagmanager.com https://google.com https://www.google.com https://www.google.com.br;
-            connect-src 'self' https://*.supabase.co ${clerkSources.join(" ")} https://*.posthog.com https://*.sentry.io https://*.instagram.com https://www.facebook.com https://connect.facebook.net https://graph.facebook.com https://pixel.facebook.com https://*.facebook.com https://*.facebook.net https://facebook.com https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://www.google.com https://cloudflareinsights.com https://*.cloudflareinsights.com;
-            frame-src 'self' ${clerkSources.join(" ")} https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com https://maps.google.com https://*.google.com https://challenges.cloudflare.com https://www.instagram.com https://*.instagram.com https://www.googletagmanager.com https://*.facebook.com https://*.facebook.net https://facebook.com;
-            frame-ancestors 'self' https://*.facebook.com https://*.facebook.net https://facebook.com;
+            img-src 'self' data: blob: ${supabaseOrigin} https://img.clerk.com https://*.clerk.com https://*.clerk.accounts.dev https://*.instagram.com https://*.cdninstagram.com https://*.fbcdn.net ${facebookSources.join(" ")} https://www.google-analytics.com https://www.googletagmanager.com https://google.com https://www.google.com https://www.google.com.br;
+            connect-src 'self' ${supabaseOrigin} ${clerkSources.join(" ")} https://*.posthog.com https://*.instagram.com ${facebookSources.join(" ")} https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://www.google.com https://cloudflareinsights.com https://*.cloudflareinsights.com;
+            frame-src 'self' ${clerkSources.join(" ")} https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com https://maps.google.com https://*.google.com https://challenges.cloudflare.com https://www.instagram.com https://*.instagram.com https://www.googletagmanager.com ${facebookSources.join(" ")};
+            frame-ancestors 'self' ${facebookSources.join(" ")};
             object-src 'none';
             base-uri 'self';
             form-action 'self';
             worker-src 'self' blob:;
-        `.replace(/\n/g, ' ').trim();
+        `.replace(/\s+/g, " ").trim();
 
         return [
             {
                 source: "/(.*)",
                 headers: [
                     { key: "Content-Security-Policy", value: ContentSecurityPolicy },
+                    { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
                     { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
                     { key: "X-Content-Type-Options", value: "nosniff" },
-                    { key: "X-XSS-Protection", value: "1; mode=block" },
                     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
                 ],
             },

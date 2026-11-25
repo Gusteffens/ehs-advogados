@@ -1,31 +1,34 @@
 import type { Metadata } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
-import { auth } from "@clerk/nextjs/server";
-import { isAdmin } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/auth";
 
 export const metadata: Metadata = {
-    title: {
-        default: "Painel Administrativo",
-        template: "%s | Admin — Erlo, Haas & Steffens",
-    },
+  title: {
+    default: "Painel Administrativo",
+    template: "%s | Admin — Erlo, Haas & Steffens",
+  },
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default async function AdminLayout({
-    children,
+  children,
 }: {
-    children: React.ReactNode;
+  children: React.ReactNode;
 }) {
-    const { sessionClaims } = await auth();
-    if (!isAdmin(sessionClaims)) {
-        redirect("/");
-    }
-    return (
-        <div className="flex min-h-screen bg-[#EEEDE5]">
-            <AdminSidebar />
-            <div className="flex-1 lg:ml-64">
-                <div className="p-6 lg:p-10">{children}</div>
-            </div>
+  await requireAdmin();
+
+  return (
+    <ClerkProvider signInUrl="/sign-in">
+      <div className="flex min-h-screen bg-cream">
+        <AdminSidebar />
+        <div className="flex-1 lg:ml-64">
+          <div className="p-6 lg:p-10">{children}</div>
         </div>
-    );
+      </div>
+    </ClerkProvider>
+  );
 }

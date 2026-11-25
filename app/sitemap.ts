@@ -1,56 +1,40 @@
 import type { MetadataRoute } from "next";
-import { hasPublicSupabaseEnv } from "@/lib/supabase/public";
-
-interface SitemapPost {
-    slug: string;
-    updated_at: string | null;
-    published_at: string | null;
-}
+import { getPublishedPostSlugsForSitemap } from "@/lib/data/blog";
+import { SITE_CONFIG } from "@/lib/site-config";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-    const staticPages: MetadataRoute.Sitemap = [
-        { url: "https://www.ehsadvogados.com.br", priority: 1.0, changeFrequency: "weekly" },
-        { url: "https://www.ehsadvogados.com.br/sobre", priority: 0.8, changeFrequency: "monthly" },
-        { url: "https://www.ehsadvogados.com.br/equipe", priority: 0.8, changeFrequency: "monthly" },
-        { url: "https://www.ehsadvogados.com.br/areas-de-atuacao", priority: 0.8, changeFrequency: "monthly" },
-        { url: "https://www.ehsadvogados.com.br/blog", priority: 0.9, changeFrequency: "daily" },
-        { url: "https://www.ehsadvogados.com.br/contato", priority: 0.7, changeFrequency: "monthly" },
-    ];
+  const baseUrl = SITE_CONFIG.url;
 
-    if (!hasPublicSupabaseEnv()) {
-        return staticPages;
-    }
+  const staticPages: MetadataRoute.Sitemap = [
+    { url: baseUrl, priority: 1.0, changeFrequency: "weekly" },
+    { url: `${baseUrl}/sobre`, priority: 0.8, changeFrequency: "monthly" },
+    { url: `${baseUrl}/equipe`, priority: 0.8, changeFrequency: "monthly" },
+    { url: `${baseUrl}/areas-de-atuacao`, priority: 0.8, changeFrequency: "monthly" },
+    { url: `${baseUrl}/blog`, priority: 0.9, changeFrequency: "daily" },
+    { url: `${baseUrl}/contato`, priority: 0.7, changeFrequency: "monthly" },
+    { url: `${baseUrl}/penal`, priority: 0.8, changeFrequency: "monthly" },
+    { url: `${baseUrl}/proagro`, priority: 0.8, changeFrequency: "monthly" },
+    {
+      url: `${baseUrl}/politica-de-privacidade`,
+      priority: 0.3,
+      changeFrequency: "yearly",
+    },
+    { url: `${baseUrl}/termos-de-uso`, priority: 0.3, changeFrequency: "yearly" },
+  ];
 
-    try {
-        const res = await fetch(
-            `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/posts?select=slug,updated_at,published_at&status=eq.published`,
-            {
-                headers: {
-                    apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-                    Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
-                },
-                next: { revalidate: 3600 },
-            }
-        );
-        if (res.ok) {
-            const posts = (await res.json()) as SitemapPost[];
-            const postPages: MetadataRoute.Sitemap = posts.map((post) => {
-                const lastModifiedSource = post.updated_at ?? post.published_at;
+  const posts = await getPublishedPostSlugsForSitemap();
+  const postPages: MetadataRoute.Sitemap = posts.map((post) => {
+    const lastModifiedSource = post.updated_at ?? post.published_at;
 
-                return {
-                    url: `https://www.ehsadvogados.com.br/blog/${post.slug}`,
-                    ...(lastModifiedSource && {
-                        lastModified: new Date(lastModifiedSource),
-                    }),
-                    priority: 0.7,
-                    changeFrequency: "weekly" as const,
-                };
-            });
-            return [...staticPages, ...postPages];
-        }
-    } catch {
-        // fallback to static pages only
-    }
+    return {
+      url: `${baseUrl}/blog/${post.slug}`,
+      ...(lastModifiedSource && {
+        lastModified: new Date(lastModifiedSource),
+      }),
+      priority: 0.7,
+      changeFrequency: "weekly" as const,
+    };
+  });
 
-    return staticPages;
+  return [...staticPages, ...postPages];
 }

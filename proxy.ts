@@ -17,12 +17,11 @@ export default clerkMiddleware(async (auth, req) => {
 
         const { sessionClaims } = await auth();
         if (!isAdmin(sessionClaims)) {
-            return NextResponse.redirect(new URL('/', req.url));
+            return NextResponse.redirect(new URL('/unauthorized', req.url));
         }
     }
 }, {
     signInUrl: '/sign-in',
-    signUpUrl: '/sign-up',
 });
 
 export const config = {

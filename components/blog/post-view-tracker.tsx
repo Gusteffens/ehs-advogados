@@ -1,30 +1,43 @@
 "use client";
 
-import { startTransition, useEffect } from "react";
+import { useEffect } from "react";
 import { incrementViews } from "@/app/actions/blog";
 
 interface PostViewTrackerProps {
-    postId: string;
+  postId: string;
 }
 
 export function PostViewTracker({ postId }: PostViewTrackerProps) {
-    useEffect(() => {
-        const storageKey = `ehs-post-viewed:${postId}`;
+  useEffect(() => {
+    const storageKey = `ehs-post-viewed:${postId}`;
 
+    try {
+      if (window.sessionStorage.getItem(storageKey)) {
+        return;
+      }
+    } catch {
+      // Ignore storage access failures and still attempt the view update.
+    }
+
+    let cancelled = false;
+
+    void incrementViews(postId)
+      .then(() => {
+        if (cancelled) return;
         try {
-            if (window.sessionStorage.getItem(storageKey)) {
-                return;
-            }
-
-            window.sessionStorage.setItem(storageKey, "1");
+          window.sessionStorage.setItem(storageKey, "1");
         } catch {
-            // Ignore storage access failures and still attempt the view update.
+          // Ignore storage write failures.
         }
+      })
+      .catch(() => {
+        // Leave sessionStorage unset so a future navigation can retry.
+      });
 
-        startTransition(() => {
-            void incrementViews(postId);
-        });
-    }, [postId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [postId]);
 
-    return null;
+  return null;
 }

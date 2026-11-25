@@ -1,65 +1,154 @@
 export type PostStatus = "draft" | "published";
 
-export interface Author {
-    id: string;
-    full_name: string;
-    slug: string;
-    bio: string | null;
-    oab: string | null;
-    specialties: string[] | null;
-    avatar_url: string | null;
-    created_at: string;
-}
+export type Author = {
+  id: string;
+  full_name: string;
+  slug: string;
+  bio: string | null;
+  oab: string | null;
+  specialties: string[] | null;
+  avatar_url: string | null;
+  created_at: string;
+};
 
-export interface Category {
-    id: number;
-    name: string;
-    slug: string;
-    color_hex: string | null;
-}
+export type Category = {
+  id: string;
+  name: string;
+  slug: string;
+  color_hex: string | null;
+};
 
-export interface Tag {
-    id: number;
-    name: string;
-    slug: string;
-}
+export type Post = {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt: string | null;
+  cover_image_url: string | null;
+  author_id: string | null;
+  category_id: string | null;
+  status: PostStatus;
+  published_at: string | null;
+  reading_time_min: number | null;
+  views: number;
+  created_at: string;
+  updated_at: string | null;
+};
 
-export interface Post {
-    id: string;
-    title: string;
-    slug: string;
-    content: string;
-    excerpt: string | null;
-    cover_image_url: string | null;
-    author_id: string | null;
-    category_id: number | null;
-    status: PostStatus;
-    published_at: string | null;
-    reading_time_min: number | null;
-    views: number;
-    created_at: string;
-    updated_at: string;
-}
+export type InstagramConfig = {
+  id: number;
+  access_token: string;
+  updated_at: string;
+};
 
-export interface PostTag {
-    post_id: string;
-    tag_id: number;
-}
+export type AuthorInsert = {
+  id: string;
+  full_name: string;
+  slug: string;
+  bio?: string | null;
+  oab?: string | null;
+  specialties?: string[] | null;
+  avatar_url?: string | null;
+  created_at?: string;
+};
 
-export interface PostWithDetails extends Post {
-    authors: Author | null;
-    categories: Category | null;
-    tags?: Tag[];
-}
+export type AuthorUpdate = Partial<Omit<AuthorInsert, "id">>;
 
-export type AuthorInsert = Omit<Author, "created_at">;
-export type AuthorUpdate = Partial<Omit<Author, "id" | "created_at">>;
+export type CategoryInsert = {
+  id?: string;
+  name: string;
+  slug: string;
+  color_hex?: string | null;
+};
 
-export type CategoryInsert = Omit<Category, "id">;
-export type CategoryUpdate = Partial<Omit<Category, "id">>;
+export type CategoryUpdate = Partial<Omit<CategoryInsert, "id">>;
 
-export type TagInsert = Omit<Tag, "id">;
-export type TagUpdate = Partial<Omit<Tag, "id">>;
+export type PostInsert = {
+  id?: string;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt?: string | null;
+  cover_image_url?: string | null;
+  author_id?: string | null;
+  category_id?: string | null;
+  status?: PostStatus;
+  published_at?: string | null;
+  reading_time_min?: number | null;
+  views?: number;
+  created_at?: string;
+  updated_at?: string | null;
+};
 
-export type PostInsert = Omit<Post, "id" | "created_at" | "updated_at" | "views">;
-export type PostUpdate = Partial<Omit<Post, "id" | "created_at">>;
+export type PostUpdate = Partial<Omit<PostInsert, "id" | "created_at">>;
+
+export type InstagramConfigInsert = {
+  id?: number;
+  access_token: string;
+  updated_at?: string;
+};
+
+export type InstagramConfigUpdate = Partial<Omit<InstagramConfigInsert, "id">>;
+
+export type Database = {
+  public: {
+    Tables: {
+      authors: {
+        Row: Author;
+        Insert: AuthorInsert;
+        Update: AuthorUpdate;
+        Relationships: [];
+      };
+      categories: {
+        Row: Category;
+        Insert: CategoryInsert;
+        Update: CategoryUpdate;
+        Relationships: [];
+      };
+      posts: {
+        Row: Post;
+        Insert: PostInsert;
+        Update: PostUpdate;
+        Relationships: [
+          {
+            foreignKeyName: "posts_author_id_fkey";
+            columns: ["author_id"];
+            isOneToOne: false;
+            referencedRelation: "authors";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "posts_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "categories";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      instagram_config: {
+        Row: InstagramConfig;
+        Insert: InstagramConfigInsert;
+        Update: InstagramConfigUpdate;
+        Relationships: [];
+      };
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      increment_post_views: {
+        Args: {
+          p_post_id: string;
+        };
+        Returns: undefined;
+      };
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
+  };
+};

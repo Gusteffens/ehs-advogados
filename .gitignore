@@ -32,10 +32,8 @@ yarn-error.log*
 .next-dev*.log
 
 # env files
-.env
-.env.local
-.env*.local
-.env.production
+.env*
+!.env.example
 
 # vercel
 .vercel
@@ -44,9 +42,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.vercel
-
 # clerk configuration (can include secrets)
 /.clerk/
-
-/run_dev.ps1
