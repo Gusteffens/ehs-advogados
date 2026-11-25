@@ -54,6 +54,17 @@ const nextConfig: NextConfig = {
             "https://*.facebook.com",
             "https://*.facebook.net",
         ];
+        const googleAdsAndAnalyticsSources = [
+            "https://www.googletagmanager.com",
+            "https://www.google-analytics.com",
+            "https://ssl.google-analytics.com",
+            "https://www.googleadservices.com",
+            "https://*.googleadservices.com",
+            "https://googleads.g.doubleclick.net",
+            "https://*.doubleclick.net",
+            "https://*.google.com",
+            "https://*.google.com.br",
+        ];
         const scriptSrc = [
             "'self'",
             isDevelopment ? "'unsafe-eval'" : "",
@@ -63,7 +74,7 @@ const nextConfig: NextConfig = {
             "https://www.instagram.com",
             "https://*.instagram.com",
             ...facebookSources,
-            "https://www.googletagmanager.com",
+            ...googleAdsAndAnalyticsSources,
             "https://static.cloudflareinsights.com",
         ].filter(Boolean).join(" ");
 
@@ -72,10 +83,10 @@ const nextConfig: NextConfig = {
             script-src ${scriptSrc};
             style-src 'self' 'unsafe-inline';
             font-src 'self';
-            img-src 'self' data: blob: ${supabaseOrigin} https://img.clerk.com https://*.clerk.com https://*.clerk.accounts.dev https://*.instagram.com https://*.cdninstagram.com https://*.fbcdn.net ${facebookSources.join(" ")} https://www.google-analytics.com https://www.googletagmanager.com https://google.com https://www.google.com https://www.google.com.br;
-            connect-src 'self' ${supabaseOrigin} ${clerkSources.join(" ")} https://*.posthog.com https://*.instagram.com ${facebookSources.join(" ")} https://www.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://www.google.com https://cloudflareinsights.com https://*.cloudflareinsights.com;
-            frame-src 'self' ${clerkSources.join(" ")} https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com https://maps.google.com https://*.google.com https://challenges.cloudflare.com https://www.instagram.com https://*.instagram.com https://www.googletagmanager.com ${facebookSources.join(" ")};
-            frame-ancestors 'self' ${facebookSources.join(" ")};
+            img-src 'self' data: blob: ${supabaseOrigin} https://img.clerk.com https://*.clerk.com https://*.clerk.accounts.dev https://*.instagram.com https://*.cdninstagram.com https://*.fbcdn.net ${facebookSources.join(" ")} https://google.com ${googleAdsAndAnalyticsSources.join(" ")};
+            connect-src 'self' ${supabaseOrigin} ${clerkSources.join(" ")} https://*.posthog.com https://*.instagram.com ${facebookSources.join(" ")} https://analytics.google.com https://stats.g.doubleclick.net ${googleAdsAndAnalyticsSources.join(" ")} https://cloudflareinsights.com https://*.cloudflareinsights.com;
+            frame-src 'self' ${clerkSources.join(" ")} https://www.youtube.com https://www.youtube-nocookie.com https://maps.google.com https://tagassistant.google.com https://*.google.com https://*.google.com.br https://*.doubleclick.net https://challenges.cloudflare.com https://www.instagram.com https://*.instagram.com https://www.googletagmanager.com ${facebookSources.join(" ")};
+            frame-ancestors 'self' ${facebookSources.join(" ")} https://tagassistant.google.com https://*.google.com https://*.google.com.br;
             object-src 'none';
             base-uri 'self';
             form-action 'self';
