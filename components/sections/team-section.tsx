@@ -1,30 +1,11 @@
-"use client";
-
 import Image from "next/image";
-import { motion, useReducedMotion } from "framer-motion";
 import { Mail } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { SectionTitle } from "@/components/ui/section-title";
 import { SITE_CONFIG } from "@/lib/site-config";
 import { cn } from "@/lib/utils";
 
-const containerVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.1 } },
-};
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, ease: "easeOut" as const },
-  },
-};
-
 export function TeamSection() {
-  const prefersReducedMotion = useReducedMotion();
-
   return (
     <section className="py-24 lg:py-32 bg-forest-900 relative overflow-hidden">
       {/* Decorative elements */}
@@ -41,25 +22,18 @@ export function TeamSection() {
           light
         />
 
-        {/* Single responsive flex-wrap layout — renders each member once */}
-        <motion.div
-          variants={containerVariants}
-          initial={prefersReducedMotion ? false : "hidden"}
-          whileInView="visible"
-          viewport={{ once: true, margin: "-60px" }}
-          className="flex flex-wrap justify-center gap-6 lg:gap-8"
-        >
+        {/* Single responsive flex-wrap layout — pure Server Component */}
+        <div className="flex flex-wrap justify-center gap-6 lg:gap-8">
           {SITE_CONFIG.team.map((member) => (
-            <motion.div
+            <article
               key={member.slug}
-              variants={cardVariants}
               className="group w-full md:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1.334rem)]"
             >
               <div
                 className={cn(
                   "relative rounded-2xl overflow-hidden h-full flex flex-col",
                   "bg-forest-800/90 border border-forest-600/40",
-                  "transition-all duration-500",
+                  "transition-all duration-300",
                   "hover:border-gold/40 hover:shadow-2xl hover:shadow-champagne-500/10",
                   "hover:-translate-y-2"
                 )}
@@ -79,7 +53,7 @@ export function TeamSection() {
                     alt={`${member.name} - ${member.role} especialista em ${member.specialties.join(", ")}`}
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-cover w-full h-full object-top transition-transform duration-700 group-hover:scale-105"
+                    className="object-cover w-full h-full object-top transition-transform duration-500 group-hover:scale-105"
                     loading="lazy"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-forest-900 via-forest-900/60 to-transparent opacity-100 transition-opacity duration-500 group-hover:opacity-90" />
@@ -126,9 +100,9 @@ export function TeamSection() {
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </article>
           ))}
-        </motion.div>
+        </div>
       </Container>
     </section>
   );

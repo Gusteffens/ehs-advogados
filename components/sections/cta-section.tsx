@@ -1,15 +1,11 @@
-"use client";
-
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
+import { WhatsAppLink } from "@/components/tracking/whatsapp-link";
 import { SITE_CONFIG } from "@/lib/site-config";
 
 export function CtaSection() {
-  const prefersReducedMotion = useReducedMotion();
-
   return (
     <section className="py-24 lg:py-28 bg-forest-900 relative overflow-hidden">
       {/* Decorative */}
@@ -20,12 +16,7 @@ export function CtaSection() {
       </div>
 
       <Container className="relative text-center">
-        <motion.div
-          initial={prefersReducedMotion ? false : { opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-        >
+        <div>
           <span className="inline-block font-body text-sm font-semibold uppercase tracking-[0.2em] text-gold mb-5">
             Entre em contato
           </span>
@@ -45,10 +36,11 @@ export function CtaSection() {
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
-            <a
-              href={SITE_CONFIG.contact.whatsapp}
-              target="_blank"
-              rel="noopener noreferrer"
+            <WhatsAppLink
+              href={SITE_CONFIG.contact.whatsappWithText}
+              page="/"
+              placement="cta-section"
+              label="WhatsApp CTA Home"
             >
               <Button
                 variant="outline"
@@ -57,9 +49,9 @@ export function CtaSection() {
               >
                 WhatsApp
               </Button>
-            </a>
+            </WhatsAppLink>
           </div>
-        </motion.div>
+        </div>
       </Container>
     </section>
   );

@@ -1,4 +1,5 @@
 export type PostStatus = "draft" | "published";
+export type LeadStatus = "new" | "contacted" | "archived";
 
 export type Author = {
   id: string;
@@ -39,6 +40,24 @@ export type InstagramConfig = {
   id: number;
   access_token: string;
   updated_at: string;
+};
+
+export type ContactLead = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  subject: string | null;
+  message: string;
+  status: LeadStatus;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  gclid: string | null;
+  fbclid: string | null;
+  source_page: string | null;
+  email_sent: boolean;
+  created_at: string;
 };
 
 export type AuthorInsert = {
@@ -90,6 +109,26 @@ export type InstagramConfigInsert = {
 
 export type InstagramConfigUpdate = Partial<Omit<InstagramConfigInsert, "id">>;
 
+export type ContactLeadInsert = {
+  id?: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  subject?: string | null;
+  message: string;
+  status?: LeadStatus;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  gclid?: string | null;
+  fbclid?: string | null;
+  source_page?: string | null;
+  email_sent?: boolean;
+  created_at?: string;
+};
+
+export type ContactLeadUpdate = Partial<Omit<ContactLeadInsert, "id" | "created_at">>;
+
 export type Database = {
   public: {
     Tables: {
@@ -130,6 +169,12 @@ export type Database = {
         Row: InstagramConfig;
         Insert: InstagramConfigInsert;
         Update: InstagramConfigUpdate;
+        Relationships: [];
+      };
+      contact_leads: {
+        Row: ContactLead;
+        Insert: ContactLeadInsert;
+        Update: ContactLeadUpdate;
         Relationships: [];
       };
     };

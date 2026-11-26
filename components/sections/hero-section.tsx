@@ -4,9 +4,11 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, MessageCircle } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
+import { WhatsAppLink } from "@/components/tracking/whatsapp-link";
+import { SITE_CONFIG } from "@/lib/site-config";
 import { useHasMounted, useMediaQuery } from "@/lib/client-hooks";
 
 const rotatingWords = [
@@ -209,7 +211,7 @@ export function HeroSection() {
           Advocacia técnica e estratégica para decisões responsáveis.
         </motion.p>
 
-        {/* Single CTA */}
+        {/* CTAs */}
         <motion.div
           {...(shouldReduceMotion
             ? fadeOnly
@@ -218,6 +220,7 @@ export function HeroSection() {
                 animate: mounted ? { opacity: 1, translateY: "0px" } : false,
                 transition: { duration: 0.7, delay: 0.4 },
               })}
+          className="flex flex-col sm:flex-row items-center justify-center gap-4"
         >
           <Link href="/contato">
             <Button
@@ -229,6 +232,21 @@ export function HeroSection() {
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>
           </Link>
+          <WhatsAppLink
+            href={SITE_CONFIG.contact.whatsappWithText}
+            page="/"
+            placement="hero-secondary"
+            label="WhatsApp Hero"
+          >
+            <Button
+              variant="outline"
+              size="lg"
+              className="border-cream/30 text-cream hover:bg-cream/10 hover:text-cream text-base px-7"
+            >
+              <MessageCircle className="h-4 w-4 text-gold" />
+              WhatsApp
+            </Button>
+          </WhatsAppLink>
         </motion.div>
       </Container>
 

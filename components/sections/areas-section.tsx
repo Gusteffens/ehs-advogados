@@ -1,7 +1,4 @@
-"use client";
-
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
 import {
   Briefcase,
   Users,
@@ -17,10 +14,7 @@ import { SectionTitle } from "@/components/ui/section-title";
 import { SITE_CONFIG } from "@/lib/site-config";
 import { cn } from "@/lib/utils";
 
-const areaVisuals: Record<
-  string,
-  { icon: LucideIcon; iconBg: string }
-> = {
+const areaVisuals: Record<string, { icon: LucideIcon; iconBg: string }> = {
   empresarial: {
     icon: Briefcase,
     iconBg:
@@ -53,25 +47,13 @@ const areaVisuals: Record<
   },
 };
 
-const containerVariants = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.08 },
-  },
-};
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, ease: "easeOut" as const },
-  },
-};
+const dedicatedLandingByArea: Record<string, { href: string; label: string }> =
+  {
+    penal: { href: "/penal", label: "Página de Direito Penal" },
+    agrario: { href: "/proagro", label: "Página de Proagro" },
+  };
 
 export function AreasSection() {
-  const prefersReducedMotion = useReducedMotion();
-
   return (
     <section className="py-24 lg:py-32 bg-cream relative overflow-hidden">
       {/* Decorative blobs (kept clear of section edges to avoid clipped seams) */}
@@ -84,59 +66,74 @@ export function AreasSection() {
           title="Experiência em diversas áreas de atuação do direito"
         />
 
-        <motion.div
-          variants={containerVariants}
-          initial={prefersReducedMotion ? false : "hidden"}
-          whileInView="visible"
-          viewport={{ once: true, margin: "-80px" }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6"
-        >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
           {SITE_CONFIG.practiceAreas.map((area) => {
             const visual = areaVisuals[area.id] ?? areaVisuals.civil;
             const Icon = visual.icon;
+            const dedicatedLanding = dedicatedLandingByArea[area.id];
 
             return (
-              <motion.div key={area.id} variants={cardVariants}>
-                <Link
-                  href={area.href}
+              <article
+                key={area.id}
+                className={cn(
+                  "group relative flex flex-col h-full p-7 rounded-2xl bg-white border border-forest-100",
+                  "transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-forest-900/8 hover:border-forest-200"
+                )}
+              >
+                {/* Gradient accent on hover */}
+                <div
                   className={cn(
-                    "group relative flex flex-col h-full p-7 rounded-2xl bg-white border border-forest-100",
-                    "transition-all duration-400 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-forest-900/8 hover:border-forest-200",
-                    "no-underline"
+                    "absolute inset-0 rounded-2xl bg-gradient-to-br opacity-0 transition-opacity duration-300 group-hover:opacity-[0.03] pointer-events-none",
+                    area.gradient
                   )}
-                >
-                  {/* Gradient accent on hover */}
+                />
+
+                <div className="relative flex flex-col flex-1">
                   <div
                     className={cn(
-                      "absolute inset-0 rounded-2xl bg-gradient-to-br opacity-0 transition-opacity duration-400 group-hover:opacity-[0.03]",
-                      area.gradient
+                      "flex h-12 w-12 items-center justify-center rounded-xl mb-5 transition-all duration-300",
+                      visual.iconBg
                     )}
-                  />
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
 
-                  <div className="relative">
-                    <div
-                      className={cn(
-                        "flex h-12 w-12 items-center justify-center rounded-xl mb-5 transition-all duration-300",
-                        visual.iconBg
-                      )}
+                  <h3 className="font-display text-xl font-bold text-ink mb-3">
+                    <Link
+                      href={area.href}
+                      className="inline-flex items-center gap-2 text-ink hover:text-forest-600 transition-colors no-underline"
                     >
-                      <Icon className="h-5 w-5" />
-                    </div>
-
-                    <h3 className="font-display text-xl font-bold text-ink mb-3 flex items-center gap-2">
                       {area.title}
                       <ArrowUpRight className="h-4 w-4 text-gold-dark opacity-0 -translate-y-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0" />
-                    </h3>
+                    </Link>
+                  </h3>
 
-                    <p className="text-forest-600 text-[0.925rem] leading-relaxed">
-                      {area.description}
-                    </p>
+                  <p className="text-forest-600 text-[0.925rem] leading-relaxed flex-1">
+                    {area.description}
+                  </p>
+
+                  <div className="mt-5 pt-4 border-t border-forest-50 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold">
+                    <Link
+                      href={`/contato?assunto=${encodeURIComponent(area.id)}`}
+                      className="text-forest-600 hover:text-ink transition-colors no-underline"
+                    >
+                      Consultar área →
+                    </Link>
+                    {dedicatedLanding && (
+                      <Link
+                        href={dedicatedLanding.href}
+                        className="inline-flex items-center gap-1 text-gold-dark hover:text-ink transition-colors no-underline"
+                      >
+                        {dedicatedLanding.label}
+                        <ArrowUpRight className="h-3.5 w-3.5" />
+                      </Link>
+                    )}
                   </div>
-                </Link>
-              </motion.div>
+                </div>
+              </article>
             );
           })}
-        </motion.div>
+        </div>
       </Container>
     </section>
   );

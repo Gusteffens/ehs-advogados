@@ -43,8 +43,7 @@ function getMockInstagramPosts(): InstagramPost[] {
       id: "mock_1",
       caption:
         "Estratégia e rigor técnico no Direito Penal. Cada detalhe importa na defesa de um caso. Atuação focada em garantir os direitos fundamentais. #direito #criminal #advocacia",
-      media_url:
-        "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&auto=format&fit=crop&q=80",
+      media_url: "/images/team/alessandra-steffens.webp",
       permalink: profileUrl,
       media_type: "IMAGE",
       timestamp: now,
@@ -53,8 +52,7 @@ function getMockInstagramPosts(): InstagramPost[] {
       id: "mock_2",
       caption:
         "A importância do compliance e da governança corporativa no cenário jurídico atual. Protegendo empresas de riscos e estruturando o crescimento seguro. #empresarial #compliance #advogado",
-      media_url:
-        "https://images.unsplash.com/photo-1505664194779-8bebcb95c550?w=600&auto=format&fit=crop&q=80",
+      media_url: "/images/team/luiza-haas.webp",
       permalink: profileUrl,
       media_type: "IMAGE",
       timestamp: now,
@@ -63,8 +61,7 @@ function getMockInstagramPosts(): InstagramPost[] {
       id: "mock_3",
       caption:
         "Reunião de alinhamento estratégico. Atendimento personalizado para cada cliente é o pilar que sustenta o nosso escritório desde 2022. #equipe #trabalho #advocacia",
-      media_url:
-        "https://images.unsplash.com/photo-1450133064473-71024230f91b?w=600&auto=format&fit=crop&q=80",
+      media_url: "/images/team/maisa-christ.webp",
       permalink: profileUrl,
       media_type: "IMAGE",
       timestamp: now,
@@ -82,8 +79,7 @@ function getMockInstagramPosts(): InstagramPost[] {
       id: "mock_5",
       caption:
         "Direito Ambiental e Agronegócio: equilibrando a produção e a sustentabilidade no campo com segurança jurídica para o produtor rural. #agronegocio #ambiental #campo",
-      media_url:
-        "https://images.unsplash.com/photo-1505664063603-23e56228b36e?w=600&auto=format&fit=crop&q=80",
+      media_url: "/images/team/jean-erlo.webp",
       permalink: profileUrl,
       media_type: "IMAGE",
       timestamp: now,
@@ -92,13 +88,76 @@ function getMockInstagramPosts(): InstagramPost[] {
       id: "mock_6",
       caption:
         "Sede Erlo, Haas & Steffens Sociedade de Advocacia em São Miguel do Oeste/SC. Um espaço estruturado para receber você com total privacidade e conforto. #sede #escritorio #smo",
-      media_url:
-        "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600&auto=format&fit=crop&q=80",
+      media_url: "/images/team/jacson-erlo.webp",
       permalink: profileUrl,
       media_type: "IMAGE",
       timestamp: now,
     },
   ];
+}
+
+export async function refreshInstagramTokenIfNeeded(): Promise<{
+  refreshed: boolean;
+  reason: string;
+}> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return { refreshed: false, reason: "supabase_not_configured" };
+  }
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("instagram_config")
+    .select("access_token, updated_at")
+    .eq("id", 1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Erro ao consultar instagram_config:", error.message);
+    return { refreshed: false, reason: "db_error" };
+  }
+
+  if (!data || !data.access_token || data.access_token === "PLACEHOLDER_TOKEN") {
+    return { refreshed: false, reason: "token_not_configured" };
+  }
+
+  const lastUpdated = new Date(data.updated_at).getTime();
+  if (Number.isFinite(lastUpdated) && Date.now() - lastUpdated <= THIRTY_DAYS_MS) {
+    return { refreshed: false, reason: "token_still_fresh" };
+  }
+
+  try {
+    const refreshUrl = `https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=${encodeURIComponent(data.access_token)}`;
+    const refreshRes = await fetch(refreshUrl, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+
+    if (!refreshRes.ok) {
+      return { refreshed: false, reason: `instagram_api_status_${refreshRes.status}` };
+    }
+
+    const refreshData = (await refreshRes.json()) as GraphRefreshResponse;
+    if (!refreshData.access_token) {
+      return { refreshed: false, reason: "missing_access_token_in_response" };
+    }
+
+    const { error: updateError } = await supabase
+      .from("instagram_config")
+      .update({
+        access_token: refreshData.access_token,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", 1);
+
+    if (updateError) {
+      console.error("Falha ao salvar token renovado do Instagram:", updateError.message);
+      return { refreshed: false, reason: "db_update_error" };
+    }
+
+    return { refreshed: true, reason: "refreshed" };
+  } catch (error) {
+    console.error("Erro na requisição de renovação de token do Instagram:", error);
+    return { refreshed: false, reason: "network_error" };
+  }
 }
 
 /**
@@ -111,11 +170,12 @@ async function fetchInstagramFeedRaw(): Promise<InstagramPost[] | null> {
     return null;
   }
 
-  const supabase = createAdminClient();
+  await refreshInstagramTokenIfNeeded();
 
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("instagram_config")
-    .select("access_token, updated_at")
+    .select("access_token")
     .eq("id", 1)
     .maybeSingle();
 
@@ -127,41 +187,7 @@ async function fetchInstagramFeedRaw(): Promise<InstagramPost[] | null> {
     return null;
   }
 
-  let token = data.access_token;
-  const lastUpdated = new Date(data.updated_at).getTime();
-
-  if (Number.isFinite(lastUpdated) && Date.now() - lastUpdated > THIRTY_DAYS_MS) {
-    try {
-      const refreshUrl = `https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=${encodeURIComponent(token)}`;
-      const refreshRes = await fetch(refreshUrl, {
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      });
-
-      if (refreshRes.ok) {
-        const refreshData = (await refreshRes.json()) as GraphRefreshResponse;
-        if (refreshData.access_token) {
-          token = refreshData.access_token;
-          const { error: updateError } = await supabase
-            .from("instagram_config")
-            .update({
-              access_token: token,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", 1);
-
-          if (updateError) {
-            console.error("Falha ao salvar token renovado do Instagram:", updateError.message);
-          }
-        }
-      } else {
-        console.warn(`Renovação do token do Instagram retornou status ${refreshRes.status}.`);
-      }
-    } catch (refreshErr) {
-      console.error("Erro na requisição de renovação de token do Instagram:", refreshErr);
-    }
-  }
-
-  const mediaUrl = `https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp&access_token=${encodeURIComponent(token)}&limit=20`;
+  const mediaUrl = `https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp&access_token=${encodeURIComponent(data.access_token)}&limit=20`;
   const res = await fetch(mediaUrl, {
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });

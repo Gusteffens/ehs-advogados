@@ -1,6 +1,15 @@
 import type { Metadata } from "next";
-import { MapPin, Mail, Instagram, Facebook, Shield } from "lucide-react";
+import { Suspense } from "react";
+import {
+  MapPin,
+  Mail,
+  Instagram,
+  Facebook,
+  Shield,
+  ExternalLink,
+} from "lucide-react";
 import { Container } from "@/components/ui/container";
+import { WhatsAppLink } from "@/components/tracking/whatsapp-link";
 import { SITE_CONFIG } from "@/lib/site-config";
 import { ContactForm } from "./contact-form";
 
@@ -11,6 +20,10 @@ export const metadata: Metadata = {
     canonical: "/contato",
   },
 };
+
+const googleMapsDirectionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+  `${SITE_CONFIG.address.street}, ${SITE_CONFIG.address.neighborhood}, ${SITE_CONFIG.address.city}, ${SITE_CONFIG.address.state}`
+)}`;
 
 export default function ContatoPage() {
   return (
@@ -68,11 +81,12 @@ export default function ContatoPage() {
                   equipe.
                 </p>
 
-                <a
+                <WhatsAppLink
                   href={SITE_CONFIG.contact.whatsappWithText}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-3 px-8 py-4 rounded-xl font-display font-bold text-base text-ink transition-all bg-gradient-to-r from-gold to-champagne-400 hover:from-champagne-400 hover:to-champagne-500 shadow-lg shadow-gold/20 hover:shadow-xl hover:shadow-gold/30 hover:-translate-y-0.5 active:translate-y-0"
+                  page="/contato"
+                  placement="contato-hero-card"
+                  label="WhatsApp Principal Contato"
+                  className="inline-flex items-center gap-3 px-8 py-4 rounded-xl font-display font-bold text-base text-ink transition-all bg-gradient-to-r from-gold to-champagne-400 hover:from-champagne-400 hover:to-champagne-500 shadow-lg shadow-gold/20 hover:shadow-xl hover:shadow-gold/30 hover:-translate-y-0.5 active:translate-y-0 no-underline"
                 >
                   Iniciar conversa no WhatsApp
                   <svg
@@ -87,7 +101,7 @@ export default function ContatoPage() {
                       clipRule="evenodd"
                     />
                   </svg>
-                </a>
+                </WhatsAppLink>
               </div>
             </div>
           </div>
@@ -107,7 +121,9 @@ export default function ContatoPage() {
                 <p className="text-forest-600 text-sm mb-8">
                   Responderemos assim que possível.
                 </p>
-                <ContactForm />
+                <Suspense fallback={<div className="min-h-[420px]" />}>
+                  <ContactForm />
+                </Suspense>
               </div>
             </div>
 
@@ -119,7 +135,7 @@ export default function ContatoPage() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cream text-forest-600 shrink-0">
                     <MapPin className="h-5 w-5" />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <p className="text-xs font-semibold uppercase tracking-wider text-forest-600 mb-1">
                       Endereço
                     </p>
@@ -131,6 +147,15 @@ export default function ContatoPage() {
                       <br />
                       {SITE_CONFIG.address.city} - {SITE_CONFIG.address.state}
                     </p>
+                    <a
+                      href={googleMapsDirectionsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 mt-3 text-xs font-semibold text-gold-dark hover:text-ink transition-colors no-underline"
+                    >
+                      Abrir rota no Google Maps
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
                   </div>
                 </div>
               </div>

@@ -91,6 +91,7 @@ const nextConfig: NextConfig = {
             base-uri 'self';
             form-action 'self';
             worker-src 'self' blob:;
+            ${isDevelopment ? "" : "upgrade-insecure-requests;"}
         `.replace(/\s+/g, " ").trim();
 
         return [

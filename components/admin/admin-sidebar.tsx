@@ -4,12 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import {
-  LayoutDashboard,
-  FileText,
-  PenSquare,
-  User,
   ArrowLeft,
+  FileText,
+  Inbox,
+  LayoutDashboard,
+  PenSquare,
   Scale,
+  Tag,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +19,8 @@ const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/posts", label: "Postagens", icon: FileText },
   { href: "/admin/posts/novo", label: "Novo Artigo", icon: PenSquare },
+  { href: "/admin/categorias", label: "Categorias", icon: Tag },
+  { href: "/admin/leads", label: "Leads", icon: Inbox },
   { href: "/admin/perfil", label: "Meu Perfil", icon: User },
 ];
 
@@ -58,7 +62,10 @@ export function AdminSidebar() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-6 space-y-1" aria-label="Navegação do painel">
+        <nav
+          className="flex-1 px-3 py-6 space-y-1"
+          aria-label="Navegação do painel"
+        >
           {navItems.map((item) => {
             const isActive = isNavItemActive(item.href, pathname);
 

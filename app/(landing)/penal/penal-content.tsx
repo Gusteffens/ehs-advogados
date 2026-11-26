@@ -4,7 +4,9 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import Script from "next/script";
+import { WhatsAppLink } from "@/components/tracking/whatsapp-link";
 import { SITE_CONFIG } from "@/lib/site-config";
+import { trackWhatsAppClick } from "@/lib/tracking";
 import "./penal.css";
 
 type InstagramWindow = Window & {
@@ -54,7 +56,6 @@ export default function PenalPageContent() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<Record<number, boolean>>({});
 
-  // Scroll effect for header
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 24);
@@ -63,7 +64,6 @@ export default function PenalPageContent() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Close menu on resize or Esc
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth > 1000) {
@@ -83,7 +83,6 @@ export default function PenalPageContent() {
     };
   }, []);
 
-  // Process Instagram embeds on mount
   useEffect(() => {
     const win = window as InstagramWindow;
     win.instgrm?.Embeds?.process?.();
@@ -113,6 +112,12 @@ export default function PenalPageContent() {
       phone ? `Telefone: ${phone}` : null,
       `Mensagem: ${message}`,
     ].filter(Boolean);
+
+    trackWhatsAppClick({
+      page: "/penal",
+      placement: "penal-whatsapp-form",
+      label: "Formulário WhatsApp Penal",
+    });
 
     const text = textLines.join("\n");
     window.open(
@@ -162,14 +167,15 @@ export default function PenalPageContent() {
             <a href="#duvidas">Dúvidas</a>
             <a href="#contato">Contato</a>
           </nav>
-          <a
+          <WhatsAppLink
             className="button button-small header-cta"
             href={WHATSAPP_LINK}
-            target="_blank"
-            rel="noopener noreferrer"
+            page="/penal"
+            placement="header-cta"
+            label="Header Penal"
           >
             Solicitar atendimento
-          </a>
+          </WhatsAppLink>
 
           <details
             className="mobile-menu"
@@ -200,15 +206,16 @@ export default function PenalPageContent() {
               <a href="#contato" onClick={() => setMenuOpen(false)}>
                 Contato
               </a>
-              <a
+              <WhatsAppLink
                 className="button"
                 href={WHATSAPP_LINK}
-                target="_blank"
-                rel="noopener noreferrer"
+                page="/penal"
+                placement="mobile-menu-cta"
+                label="Menu Mobile Penal"
                 onClick={() => setMenuOpen(false)}
               >
                 Solicitar atendimento
-              </a>
+              </WhatsAppLink>
             </nav>
           </details>
         </div>
@@ -236,14 +243,15 @@ export default function PenalPageContent() {
                 atuação individualizada e sigilosa.
               </p>
               <div className="hero-actions">
-                <a
+                <WhatsAppLink
                   className="button"
                   href={WHATSAPP_LINK}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  page="/penal"
+                  placement="hero-primary"
+                  label="Hero Penal"
                 >
                   Falar agora pelo WhatsApp
-                </a>
+                </WhatsAppLink>
                 <a className="button button-ghost" href="#como-ajudar">
                   Ver como podemos ajudar
                 </a>
@@ -352,14 +360,15 @@ export default function PenalPageContent() {
               </article>
             </div>
             <div className="center">
-              <a
+              <WhatsAppLink
                 className="button"
                 href={WHATSAPP_LINK}
-                target="_blank"
-                rel="noopener noreferrer"
+                page="/penal"
+                placement="help-section"
+                label="Como Podemos Ajudar Penal"
               >
                 Explicar minha situação pelo WhatsApp
-              </a>
+              </WhatsAppLink>
             </div>
           </div>
         </section>
@@ -425,14 +434,15 @@ export default function PenalPageContent() {
                 Conte brevemente o que aconteceu. As informações iniciais serão
                 avaliadas para orientar os próximos passos possíveis.
               </p>
-              <a
+              <WhatsAppLink
                 className="button"
                 href={WHATSAPP_LINK}
-                target="_blank"
-                rel="noopener noreferrer"
+                page="/penal"
+                placement="office-contact-card"
+                label="Card Contato Penal"
               >
                 Conversar pelo WhatsApp
-              </a>
+              </WhatsAppLink>
               <address>
                 <a href={SITE_CONFIG.contact.phone}>
                   {SITE_CONFIG.contact.whatsappDisplay}
@@ -493,14 +503,15 @@ export default function PenalPageContent() {
                     Envie uma mensagem e explique brevemente a situação.
                   </span>
                 </div>
-                <a
+                <WhatsAppLink
                   className="button"
                   href={WHATSAPP_LINK}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  page="/penal"
+                  placement="faq-cta"
+                  label="FAQ Penal"
                 >
                   Falar com a equipe
-                </a>
+                </WhatsAppLink>
               </div>
             </div>
           </div>
@@ -628,11 +639,12 @@ export default function PenalPageContent() {
         </div>
       </footer>
 
-      <a
+      <WhatsAppLink
         className="floating-whatsapp"
         href={WHATSAPP_LINK}
-        target="_blank"
-        rel="noopener noreferrer"
+        page="/penal"
+        placement="floating-whatsapp"
+        label="Botão Flutuante Penal"
         aria-label="Solicitar atendimento pelo WhatsApp"
       >
         <span aria-hidden="true">
@@ -645,7 +657,7 @@ export default function PenalPageContent() {
           </svg>
         </span>
         <b>Atendimento</b>
-      </a>
+      </WhatsAppLink>
     </div>
   );
 }

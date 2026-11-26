@@ -306,3 +306,29 @@ export async function getPublishedPostSlugsForSitemap(): Promise<SitemapPost[]> 
     return [];
   }
 }
+
+export async function getRelatedBlogPosts(
+  categoryId: string | null,
+  excludePostId: string,
+  limit = 3
+): Promise<BlogPostSummary[]> {
+  const posts = await getPublishedBlogPosts();
+  const candidates = posts.filter((post) => post.id !== excludePostId);
+
+  if (candidates.length === 0 || limit <= 0) {
+    return [];
+  }
+
+  const sameCategory = categoryId
+    ? candidates.filter((post) => post.category_id === categoryId)
+    : [];
+
+  if (sameCategory.length >= limit) {
+    return sameCategory.slice(0, limit);
+  }
+
+  const pickedIds = new Set(sameCategory.map((post) => post.id));
+  const fallback = candidates.filter((post) => !pickedIds.has(post.id));
+
+  return [...sameCategory, ...fallback].slice(0, limit);
+}

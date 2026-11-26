@@ -4,7 +4,9 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import Script from "next/script";
+import { WhatsAppLink } from "@/components/tracking/whatsapp-link";
 import { SITE_CONFIG } from "@/lib/site-config";
+import { trackWhatsAppClick } from "@/lib/tracking";
 import "./proagro.css";
 
 type InstagramWindow = Window & {
@@ -25,12 +27,14 @@ export default function ProagroPageContent() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(1);
+  const [loadCarousels, setLoadCarousels] = useState(false);
   const [formStatus, setFormStatus] = useState(
     "Os dados não são armazenados nesta página. Ao enviar, o WhatsApp será aberto com a mensagem preenchida."
   );
 
   const contactFormRef = useRef<HTMLFormElement>(null);
   const mobileMenuDetailsRef = useRef<HTMLDetailsElement>(null);
+  const carouselsSectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -41,6 +45,7 @@ export default function ProagroPageContent() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Process hero Instagram embed once embed.js loads
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     let cancelled = false;
@@ -65,6 +70,37 @@ export default function ProagroPageContent() {
     };
   }, []);
 
+  // Lazy-mount the 2 below-the-fold Instagram carousels via IntersectionObserver
+  useEffect(() => {
+    const target = carouselsSectionRef.current;
+    if (!target || loadCarousels) return;
+
+    if (!("IntersectionObserver" in window)) {
+      const id = setTimeout(() => setLoadCarousels(true), 0);
+      return () => clearTimeout(id);
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setLoadCarousels(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "300px 0px" }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [loadCarousels]);
+
+  // Re-run instgrm.Embeds.process() once the lazy carousels mount
+  useEffect(() => {
+    if (!loadCarousels) return;
+    const win = window as InstagramWindow;
+    win.instgrm?.Embeds?.process?.();
+  }, [loadCarousels]);
+
   const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!contactFormRef.current) return;
@@ -82,6 +118,12 @@ export default function ProagroPageContent() {
       `Situação do Proagro: ${status}`,
       `Resumo do problema: ${message}`,
     ].join("\n");
+
+    trackWhatsAppClick({
+      page: "/proagro",
+      placement: "proagro-whatsapp-form",
+      label: `Formulário Proagro (${status})`,
+    });
 
     setFormStatus("Abrindo o WhatsApp com a mensagem preenchida.");
     window.open(
@@ -134,14 +176,15 @@ export default function ProagroPageContent() {
             <a href="#contato">Contato</a>
           </nav>
 
-          <a
+          <WhatsAppLink
             className="button button-small header-cta"
             href={defaultWhatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+            page="/proagro"
+            placement="header-cta"
+            label="Header Proagro"
           >
             Falar pelo WhatsApp
-          </a>
+          </WhatsAppLink>
 
           {/* Mobile Details/Summary Menu */}
           <details
@@ -173,15 +216,16 @@ export default function ProagroPageContent() {
               <a href="#contato" onClick={handleMenuLinkClick}>
                 Contato
               </a>
-              <a
+              <WhatsAppLink
                 className="button"
                 href={defaultWhatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+                page="/proagro"
+                placement="mobile-menu-cta"
+                label="Menu Mobile Proagro"
                 onClick={handleMenuLinkClick}
               >
                 Falar pelo WhatsApp
-              </a>
+              </WhatsAppLink>
             </nav>
           </details>
         </div>
@@ -210,14 +254,15 @@ export default function ProagroPageContent() {
                 na decisão de negativa e nas regras aplicáveis ao Proagro.
               </p>
               <div className="hero-actions">
-                <a
+                <WhatsAppLink
                   className="button"
                   href={defaultWhatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  page="/proagro"
+                  placement="hero-primary"
+                  label="Hero Proagro"
                 >
                   Falar pelo WhatsApp
-                </a>
+                </WhatsAppLink>
                 <a className="button button-ghost" href="#contato">
                   Enviar resumo do caso
                 </a>
@@ -288,14 +333,15 @@ export default function ProagroPageContent() {
                 solicitação junto ao banco, cooperativa ou agente financeiro,
                 conforme o caso.
               </p>
-              <a
+              <WhatsAppLink
                 className="button"
                 href={defaultWhatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+                page="/proagro"
+                placement="documents-section"
+                label="Documentos Proagro"
               >
                 Tenho dúvidas sobre meus documentos
-              </a>
+              </WhatsAppLink>
             </div>
 
             <div
@@ -423,8 +469,9 @@ export default function ProagroPageContent() {
           </div>
         </section>
 
-        {/* Content Section (Instagram Carousels) */}
+        {/* Content Section (Instagram Carousels — mounted on demand via IntersectionObserver) */}
         <section
+          ref={carouselsSectionRef}
           className="section social-content"
           id="conteudos"
           aria-labelledby="social-content-title"
@@ -455,19 +502,31 @@ export default function ProagroPageContent() {
                   </a>
                 </div>
                 <div className="instagram-embed-shell instagram-post-shell">
-                  <blockquote
-                    className="instagram-media"
-                    data-instgrm-permalink="https://www.instagram.com/p/DYxm0qDjbxO/?utm_source=ig_embed&amp;utm_campaign=loading"
-                    data-instgrm-version="14"
-                  >
-                    <a
-                      href="https://www.instagram.com/p/DYxm0qDjbxO/"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                  {loadCarousels ? (
+                    <blockquote
+                      className="instagram-media"
+                      data-instgrm-permalink="https://www.instagram.com/p/DYxm0qDjbxO/?utm_source=ig_embed&amp;utm_campaign=loading"
+                      data-instgrm-version="14"
                     >
-                      Ver carrossel no Instagram
-                    </a>
-                  </blockquote>
+                      <a
+                        href="https://www.instagram.com/p/DYxm0qDjbxO/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Ver carrossel no Instagram
+                      </a>
+                    </blockquote>
+                  ) : (
+                    <div className="flex items-center justify-center w-full min-h-[600px] p-8 text-center">
+                      <a
+                        href="https://www.instagram.com/p/DYxm0qDjbxO/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Ver carrossel 01 no Instagram ↗
+                      </a>
+                    </div>
+                  )}
                 </div>
               </article>
 
@@ -483,19 +542,31 @@ export default function ProagroPageContent() {
                   </a>
                 </div>
                 <div className="instagram-embed-shell instagram-post-shell">
-                  <blockquote
-                    className="instagram-media"
-                    data-instgrm-permalink="https://www.instagram.com/p/DWFFlr6CO94/?utm_source=ig_embed&amp;utm_campaign=loading"
-                    data-instgrm-version="14"
-                  >
-                    <a
-                      href="https://www.instagram.com/p/DWFFlr6CO94/"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                  {loadCarousels ? (
+                    <blockquote
+                      className="instagram-media"
+                      data-instgrm-permalink="https://www.instagram.com/p/DWFFlr6CO94/?utm_source=ig_embed&amp;utm_campaign=loading"
+                      data-instgrm-version="14"
                     >
-                      Ver carrossel no Instagram
-                    </a>
-                  </blockquote>
+                      <a
+                        href="https://www.instagram.com/p/DWFFlr6CO94/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Ver carrossel no Instagram
+                      </a>
+                    </blockquote>
+                  ) : (
+                    <div className="flex items-center justify-center w-full min-h-[600px] p-8 text-center">
+                      <a
+                        href="https://www.instagram.com/p/DWFFlr6CO94/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Ver carrossel 02 no Instagram ↗
+                      </a>
+                    </div>
+                  )}
                 </div>
               </article>
             </div>
@@ -600,14 +671,15 @@ export default function ProagroPageContent() {
                     Envie uma mensagem e explique brevemente a situação.
                   </span>
                 </div>
-                <a
+                <WhatsAppLink
                   className="button"
                   href={defaultWhatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  page="/proagro"
+                  placement="faq-cta"
+                  label="FAQ Proagro"
                 >
                   Falar com a equipe
-                </a>
+                </WhatsAppLink>
               </div>
             </div>
           </div>
@@ -741,11 +813,12 @@ export default function ProagroPageContent() {
       </footer>
 
       {/* Floating WhatsApp Action Button */}
-      <a
+      <WhatsAppLink
         className="floating-whatsapp"
         href={defaultWhatsappUrl}
-        target="_blank"
-        rel="noopener noreferrer"
+        page="/proagro"
+        placement="floating-whatsapp"
+        label="Botão Flutuante Proagro"
         aria-label="Falar com o escritório pelo WhatsApp"
       >
         <span aria-hidden="true">
@@ -754,10 +827,17 @@ export default function ProagroPageContent() {
           </svg>
         </span>
         <b>WhatsApp</b>
-      </a>
+      </WhatsAppLink>
 
       {/* Instagram Embed Lazy Loader Script */}
-      <Script src="https://www.instagram.com/embed.js" strategy="lazyOnload" />
+      <Script
+        src="https://www.instagram.com/embed.js"
+        strategy="lazyOnload"
+        onLoad={() => {
+          const win = window as InstagramWindow;
+          win.instgrm?.Embeds?.process?.();
+        }}
+      />
     </div>
   );
 }

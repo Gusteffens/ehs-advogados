@@ -11,6 +11,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createPublicClient } from "@/lib/supabase/public";
 import { getBlogActionRatelimit, getViewRatelimit } from "@/lib/upstash";
 import { calculateReadingTime } from "@/lib/utils";
+import type { LeadStatus } from "@/types/database";
 
 const ALLOWED_IMAGE_MIME_TO_EXT: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -19,7 +20,7 @@ const ALLOWED_IMAGE_MIME_TO_EXT: Record<string, string> = {
   "image/avif": "avif",
 };
 
-const MAX_COVER_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
 
 const uuidSchema = z.string().uuid("Identificador inválido.");
 
@@ -63,6 +64,25 @@ const postFormSchema = z.object({
   cover_image_url: coverImageUrlSchema,
   author_id: optionalTrimmedString(100),
 });
+
+const categoryFormSchema = z.object({
+  name: z.preprocess(
+    (value) => (typeof value === "string" ? value.trim() : ""),
+    z
+      .string()
+      .min(2, "O nome da categoria deve ter pelo menos 2 caracteres.")
+      .max(80, "Nome da categoria muito longo.")
+  ),
+  slug: optionalTrimmedString(100),
+  color_hex: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() ? value.trim() : "#E8D49A"),
+    z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Cor hexadecimal inválida (ex.: #E8D49A).")
+  ),
+});
+
+const categoryIdSchema = z.string().trim().min(1, "Categoria inválida.").max(100);
+
+const leadStatusSchema = z.enum(["new", "contacted", "archived"]);
 
 async function enforceBlogActionRatelimit(userId: string) {
   const ratelimit = getBlogActionRatelimit();
@@ -176,7 +196,7 @@ async function resolveAuthorId(
   return first?.id ?? null;
 }
 
-export async function uploadCoverImage(formData: FormData): Promise<string> {
+async function uploadBlogImage(formData: FormData, folder?: string): Promise<string> {
   const { userId } = await requireAdmin();
   await enforceBlogActionRatelimit(userId);
 
@@ -191,25 +211,34 @@ export async function uploadCoverImage(formData: FormData): Promise<string> {
     throw new Error("Formato de imagem inválido. Utilize JPEG, PNG, WebP ou AVIF.");
   }
 
-  if (file.size <= 0 || file.size > MAX_COVER_IMAGE_BYTES) {
+  if (file.size <= 0 || file.size > MAX_IMAGE_BYTES) {
     throw new Error("A imagem deve ter no máximo 5 MB.");
   }
 
   const supabase = createAdminClient();
-  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+  const baseName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+  const filePath = folder ? `${folder}/${baseName}` : baseName;
 
-  const { error } = await supabase.storage.from("blog-covers").upload(fileName, file, {
+  const { error } = await supabase.storage.from("blog-covers").upload(filePath, file, {
     contentType: file.type,
     upsert: false,
   });
 
   if (error) {
-    console.error("Failed to upload cover image:", error);
-    throw new Error("Não foi possível enviar a imagem de capa.");
+    console.error("Failed to upload blog image:", error);
+    throw new Error("Não foi possível enviar a imagem.");
   }
 
-  const { data } = supabase.storage.from("blog-covers").getPublicUrl(fileName);
+  const { data } = supabase.storage.from("blog-covers").getPublicUrl(filePath);
   return data.publicUrl;
+}
+
+export async function uploadCoverImage(formData: FormData): Promise<string> {
+  return uploadBlogImage(formData);
+}
+
+export async function uploadEditorImage(formData: FormData): Promise<string> {
+  return uploadBlogImage(formData, "editor");
 }
 
 export async function createPost(formData: FormData) {
@@ -371,6 +400,189 @@ export async function deletePost(id: string) {
   revalidatePublicBlog([existingPost?.slug]);
   revalidatePath("/admin/posts");
   redirect("/admin/posts");
+}
+
+export async function duplicatePost(postId: string): Promise<{ id: string }> {
+  const { userId } = await requireAdmin();
+  await enforceBlogActionRatelimit(userId);
+
+  const idParsed = uuidSchema.safeParse(postId);
+  if (!idParsed.success) {
+    throw new Error("Identificador do artigo inválido.");
+  }
+
+  const supabase = createAdminClient();
+  const { data: original, error: loadError } = await supabase
+    .from("posts")
+    .select("title, content, excerpt, cover_image_url, author_id, category_id, reading_time_min")
+    .eq("id", idParsed.data)
+    .maybeSingle();
+
+  if (loadError || !original) {
+    console.error("Failed to load post to duplicate:", loadError);
+    throw new Error("Artigo não encontrado para duplicação.");
+  }
+
+  const copyTitle = `Cópia de ${original.title}`.slice(0, 300);
+  const uniqueSlug = await getUniquePostSlug(supabase, copyTitle);
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("posts")
+    .insert({
+      title: copyTitle,
+      slug: uniqueSlug,
+      content: original.content,
+      excerpt: original.excerpt,
+      cover_image_url: original.cover_image_url,
+      author_id: original.author_id,
+      category_id: original.category_id,
+      reading_time_min: original.reading_time_min ?? calculateReadingTime(original.content),
+      status: "draft",
+      published_at: null,
+      views: 0,
+    })
+    .select("id")
+    .single();
+
+  if (insertError || !inserted) {
+    console.error("Failed to duplicate post:", insertError);
+    throw new Error("Não foi possível duplicar o artigo.");
+  }
+
+  revalidatePath("/admin/posts");
+  return { id: inserted.id };
+}
+
+export async function createCategory(formData: FormData): Promise<{ error?: string }> {
+  const { userId } = await requireAdmin();
+  try {
+    await enforceBlogActionRatelimit(userId);
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Muitas operações em sequência.",
+    };
+  }
+
+  const parsed = categoryFormSchema.safeParse({
+    name: formData.get("name"),
+    slug: formData.get("slug"),
+    color_hex: formData.get("color_hex"),
+  });
+
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? "Dados da categoria inválidos.",
+    };
+  }
+
+  const slug = slugify(parsed.data.slug || parsed.data.name, {
+    lower: true,
+    strict: true,
+    locale: "pt",
+  });
+
+  if (!slug) {
+    return { error: "Não foi possível gerar um slug válido para a categoria." };
+  }
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("categories").insert({
+    name: parsed.data.name,
+    slug,
+    color_hex: parsed.data.color_hex,
+  });
+
+  if (error) {
+    console.error("Failed to create category:", error);
+    if (error.code === "23505") {
+      return { error: "Já existe uma categoria com este nome ou slug." };
+    }
+    return { error: "Não foi possível criar a categoria." };
+  }
+
+  updateTag("blog-categories");
+  updateTag("blog-posts");
+  revalidatePath("/blog");
+  revalidatePath("/admin/categorias");
+  return {};
+}
+
+export async function deleteCategory(id: string): Promise<{ error?: string }> {
+  const { userId } = await requireAdmin();
+  try {
+    await enforceBlogActionRatelimit(userId);
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Muitas operações em sequência.",
+    };
+  }
+
+  const parsedId = categoryIdSchema.safeParse(id);
+  if (!parsedId.success) {
+    return { error: "Identificador de categoria inválido." };
+  }
+
+  const supabase = createAdminClient();
+  const { error: unlinkError } = await supabase
+    .from("posts")
+    .update({ category_id: null })
+    .eq("category_id", parsedId.data);
+
+  if (unlinkError) {
+    console.error("Failed to unlink posts from category:", unlinkError);
+    return { error: "Não foi possível desvincular os artigos desta categoria." };
+  }
+
+  const { error } = await supabase.from("categories").delete().eq("id", parsedId.data);
+
+  if (error) {
+    console.error("Failed to delete category:", error);
+    return { error: "Não foi possível excluir a categoria." };
+  }
+
+  updateTag("blog-categories");
+  updateTag("blog-posts");
+  revalidatePath("/blog");
+  revalidatePath("/admin/categorias");
+  return {};
+}
+
+export async function updateLeadStatus(
+  leadId: string,
+  status: LeadStatus
+): Promise<{ error?: string }> {
+  const { userId } = await requireAdmin();
+  try {
+    await enforceBlogActionRatelimit(userId);
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Muitas operações em sequência.",
+    };
+  }
+
+  const parsedId = uuidSchema.safeParse(leadId);
+  if (!parsedId.success) {
+    return { error: "Identificador do lead inválido." };
+  }
+
+  const parsedStatus = leadStatusSchema.safeParse(status);
+  if (!parsedStatus.success) {
+    return { error: "Status inválido." };
+  }
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("contact_leads")
+    .update({ status: parsedStatus.data })
+    .eq("id", parsedId.data);
+
+  if (error) {
+    console.error("Failed to update lead status:", error);
+    return { error: "Não foi possível atualizar o status do lead." };
+  }
+
+  revalidatePath("/admin/leads");
+  return {};
 }
 
 export async function incrementViews(postId: string): Promise<void> {

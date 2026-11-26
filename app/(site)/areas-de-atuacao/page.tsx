@@ -93,12 +93,32 @@ export default function AreasPage() {
                     <p className="text-ink leading-relaxed mb-8">
                       {area.description}
                     </p>
-                    <Link href="/contato">
-                      <Button variant="primary" className="group">
-                        Consultar sobre {area.shortTitle}
-                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                      </Button>
-                    </Link>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Link
+                        href={`/contato?assunto=${encodeURIComponent(area.id)}`}
+                      >
+                        <Button variant="primary" className="group">
+                          Consultar sobre {area.shortTitle}
+                          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                        </Button>
+                      </Link>
+                      {area.id === "penal" && (
+                        <Link href="/penal">
+                          <Button variant="outline" className="group">
+                            Advocacia Criminal
+                            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                          </Button>
+                        </Link>
+                      )}
+                      {area.id === "agrario" && (
+                        <Link href="/proagro">
+                          <Button variant="outline" className="group">
+                            Revisão de Proagro
+                            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
                   </div>
 
                   {/* Services list */}

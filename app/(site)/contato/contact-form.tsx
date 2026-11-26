@@ -1,11 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Send, CheckCircle, AlertCircle } from "lucide-react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Send, CheckCircle, AlertCircle, RotateCcw } from "lucide-react";
 import { submitContactForm, type ContactFormState } from "./actions";
 import { Button } from "@/components/ui/button";
 import { SITE_CONFIG } from "@/lib/site-config";
+import { trackContactLead } from "@/lib/tracking";
 import { cn } from "@/lib/utils";
 
 const initialState: ContactFormState = {
@@ -19,14 +21,85 @@ const subjects = [
   "Outro assunto",
 ];
 
+const MAX_MESSAGE_LENGTH = 2000;
+
 const inputClasses =
   "w-full rounded-xl border border-forest-200 bg-white px-4 py-3 text-ink font-body text-[0.925rem] placeholder:text-forest-600/70 focus:outline-none focus:ring-2 focus:ring-champagne-500/50 focus:border-champagne-500 transition-all";
 
-export function ContactForm() {
+function generateEventId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `ehs-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function formatBrazilPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 11);
+  if (digits.length === 0) return "";
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
+function resolveInitialSubject(param: string | null): string {
+  if (!param) return "";
+  const normalized = param.trim().toLowerCase();
+  const matchedById = SITE_CONFIG.practiceAreas.find(
+    (area) => area.id.toLowerCase() === normalized
+  );
+  if (matchedById) return matchedById.title;
+
+  const matchedByTitle = subjects.find(
+    (s) => s.toLowerCase() === normalized
+  );
+  return matchedByTitle ?? "";
+}
+
+function ContactFormInner({ onReset }: { onReset: () => void }) {
+  const pathname = usePathname() || "/contato";
+  const searchParams = useSearchParams();
+
   const [state, formAction, isPending] = useActionState(
     submitContactForm,
     initialState
   );
+
+  const initialSubjectFromQuery = resolveInitialSubject(
+    searchParams.get("assunto")
+  );
+
+  const [nameInput, setNameInput] = useState<string | null>(null);
+  const [emailInput, setEmailInput] = useState<string | null>(null);
+  const [phoneInput, setPhoneInput] = useState<string | null>(null);
+  const [subjectInput, setSubjectInput] = useState<string | null>(null);
+  const [messageInput, setMessageInput] = useState<string | null>(null);
+  const [eventId] = useState(generateEventId);
+
+  const name = nameInput ?? state.values?.name ?? "";
+  const email = emailInput ?? state.values?.email ?? "";
+  const phone = phoneInput ?? formatBrazilPhone(state.values?.phone ?? "");
+  const subject = subjectInput ?? state.values?.subject ?? initialSubjectFromQuery;
+  const message = messageInput ?? state.values?.message ?? "";
+
+  const trackedEventRef = useRef<string | null>(null);
+
+  // Fire lead tracking once on success (deduplicated with Meta CAPI via eventId)
+  useEffect(() => {
+    if (!state.success) return;
+    const resolvedEventId = state.eventId || eventId;
+    if (trackedEventRef.current === resolvedEventId) return;
+    trackedEventRef.current = resolvedEventId;
+    trackContactLead(resolvedEventId, subject || undefined);
+  }, [state.success, state.eventId, eventId, subject]);
+
+  const utmSource = searchParams.get("utm_source") ?? "";
+  const utmMedium = searchParams.get("utm_medium") ?? "";
+  const utmCampaign = searchParams.get("utm_campaign") ?? "";
+  const gclid = searchParams.get("gclid") ?? "";
+  const fbclid = searchParams.get("fbclid") ?? "";
 
   if (state.success) {
     return (
@@ -35,13 +108,36 @@ export function ContactForm() {
         <h3 className="font-display text-xl font-bold text-ink mb-2">
           Mensagem enviada!
         </h3>
-        <p className="text-forest-600">{state.message}</p>
+        <p className="text-forest-600 mb-6">{state.message}</p>
+        <Button type="button" variant="outline" size="md" onClick={onReset}>
+          <RotateCcw className="h-4 w-4" />
+          Enviar outra mensagem
+        </Button>
       </div>
     );
   }
 
   return (
     <form action={formAction} className="space-y-5">
+      {/* Honeypot anti-spam field */}
+      <input
+        type="text"
+        name="website"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        className="sr-only"
+      />
+
+      {/* Attribution & deduplication hidden fields */}
+      <input type="hidden" name="utm_source" value={utmSource} />
+      <input type="hidden" name="utm_medium" value={utmMedium} />
+      <input type="hidden" name="utm_campaign" value={utmCampaign} />
+      <input type="hidden" name="gclid" value={gclid} />
+      <input type="hidden" name="fbclid" value={fbclid} />
+      <input type="hidden" name="source_page" value={pathname} />
+      <input type="hidden" name="event_id" value={eventId} />
+
       {state.error && (
         <div
           role="alert"
@@ -65,6 +161,8 @@ export function ContactForm() {
             name="name"
             type="text"
             required
+            value={name}
+            onChange={(e) => setNameInput(e.target.value)}
             placeholder="Seu nome"
             className={inputClasses}
           />
@@ -81,6 +179,8 @@ export function ContactForm() {
             name="email"
             type="email"
             required
+            value={email}
+            onChange={(e) => setEmailInput(e.target.value)}
             placeholder="seu@email.com"
             className={inputClasses}
           />
@@ -99,6 +199,9 @@ export function ContactForm() {
             id="phone"
             name="phone"
             type="tel"
+            inputMode="tel"
+            value={phone}
+            onChange={(e) => setPhoneInput(formatBrazilPhone(e.target.value))}
             placeholder="(49) 99999-9999"
             className={inputClasses}
           />
@@ -113,15 +216,17 @@ export function ContactForm() {
           <select
             id="subject"
             name="subject"
+            value={subject}
+            onChange={(e) => setSubjectInput(e.target.value)}
             className={cn(
               inputClasses,
               "appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%233B5A3C%22%20d%3D%22M2%204l4%204%204-4%22/%3E%3C/svg%3E')] bg-no-repeat bg-[right_1rem_center]"
             )}
           >
             <option value="">Selecione um assunto</option>
-            {subjects.map((subject) => (
-              <option key={subject} value={subject}>
-                {subject}
+            {subjects.map((item) => (
+              <option key={item} value={item}>
+                {item}
               </option>
             ))}
           </select>
@@ -129,17 +234,32 @@ export function ContactForm() {
       </div>
 
       <div>
-        <label
-          htmlFor="message"
-          className="block text-sm font-medium text-ink mb-1.5"
-        >
-          Mensagem *
-        </label>
+        <div className="flex items-center justify-between mb-1.5">
+          <label
+            htmlFor="message"
+            className="block text-sm font-medium text-ink"
+          >
+            Mensagem *
+          </label>
+          <span
+            className={cn(
+              "text-xs tabular-nums",
+              message.length > MAX_MESSAGE_LENGTH - 150
+                ? "text-gold-dark font-semibold"
+                : "text-forest-600/70"
+            )}
+          >
+            {message.length}/{MAX_MESSAGE_LENGTH}
+          </span>
+        </div>
         <textarea
           id="message"
           name="message"
           required
           rows={5}
+          maxLength={MAX_MESSAGE_LENGTH}
+          value={message}
+          onChange={(e) => setMessageInput(e.target.value)}
           placeholder="Descreva brevemente como podemos ajudar..."
           className={cn(inputClasses, "resize-none")}
         />
@@ -167,5 +287,16 @@ export function ContactForm() {
         .
       </p>
     </form>
+  );
+}
+
+export function ContactForm() {
+  const [formKey, setFormKey] = useState(0);
+
+  return (
+    <ContactFormInner
+      key={formKey}
+      onReset={() => setFormKey((prev) => prev + 1)}
+    />
   );
 }
