@@ -30,6 +30,7 @@ export function CategoryFilter({
     } else {
       params.delete("categoria");
     }
+    params.delete("pagina");
     const qs = params.toString();
     const nextUrl = qs ? `/blog?${qs}` : "/blog";
     startTransition(() => {

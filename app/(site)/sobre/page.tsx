@@ -14,14 +14,40 @@ import {
 import { Container } from "@/components/ui/container";
 import { SectionTitle } from "@/components/ui/section-title";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { SITE_CONFIG } from "@/lib/site-config";
+import { cn } from "@/lib/utils";
+
+const pageTitle = "Sobre o Escritório";
+const pageDescription = `Conheça a história e os valores da ${SITE_CONFIG.legalName}, escritório de advocacia fundado em ${SITE_CONFIG.founded} em ${SITE_CONFIG.address.city} - ${SITE_CONFIG.address.state}.`;
 
 export const metadata: Metadata = {
-  title: "Sobre o Escritório",
-  description: `Conheça a história e os valores da ${SITE_CONFIG.legalName}, escritório de advocacia fundado em ${SITE_CONFIG.founded} em ${SITE_CONFIG.address.city} - ${SITE_CONFIG.address.state}.`,
+  title: pageTitle,
+  description: pageDescription,
   alternates: {
     canonical: "/sobre",
+  },
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    url: `${SITE_CONFIG.url}/sobre`,
+    siteName: "Erlo, Haas & Steffens Advocacia",
+    title: `${pageTitle} | Erlo, Haas & Steffens`,
+    description: pageDescription,
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Sobre a Erlo, Haas & Steffens Advocacia",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${pageTitle} | Erlo, Haas & Steffens`,
+    description: pageDescription,
+    images: ["/og-image.png"],
   },
 };
 
@@ -72,14 +98,25 @@ const timeline = [
     event:
       "Lançamento do canal digital e do blog jurídico, ampliando o alcance do escritório em todo o Brasil.",
   },
+  {
+    year: "2026",
+    event:
+      "Consolidação do atendimento digital estruturado em âmbito nacional, com fortalecimento das frentes de Agronegócio, Defesa Penal e produção editorial jurídica.",
+  },
 ];
 
 export default function SobrePage() {
   return (
     <>
-      {/* Hero */}
-      <section className="pt-32 pb-0 lg:pt-40 lg:pb-0 bg-gradient-to-b from-ink to-forest-900 relative overflow-hidden">
-        <div className="absolute top-10 right-10 w-80 h-80 bg-gold/10 rounded-full blur-[120px] pointer-events-none" />
+      {/* Hero — overflow-hidden isolated to backdrop so protruding -mb-10 team photo is never clipped */}
+      <section className="pt-32 pb-0 lg:pt-40 lg:pb-0 bg-gradient-to-b from-ink to-forest-900 relative">
+        <div
+          className="absolute inset-0 overflow-hidden pointer-events-none"
+          aria-hidden="true"
+        >
+          <div className="absolute top-10 right-10 w-80 h-80 bg-gold/10 rounded-full blur-[120px]" />
+        </div>
+
         <Container className="relative pb-16 lg:pb-24">
           <div className="max-w-3xl">
             <span className="inline-block font-body text-sm font-semibold uppercase tracking-[0.2em] text-gold mb-4">
@@ -98,22 +135,27 @@ export default function SobrePage() {
         </Container>
 
         <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 -mb-10 lg:-mb-16">
-          <div className="relative w-full aspect-[16/9] md:aspect-[21/9] rounded-2xl lg:rounded-t-3xl overflow-hidden shadow-2xl border border-forest-600/20">
+          <div className="relative w-full aspect-[16/9] md:aspect-[21/9] rounded-2xl lg:rounded-3xl overflow-hidden shadow-2xl border border-forest-600/20 bg-ink">
             <Image
               src="/images/team/equipe.webp"
               alt="Equipe de advogados do Erlo, Haas & Steffens"
               width={1400}
               height={600}
-              className="object-cover w-full h-full object-center"
+              sizes="(max-width: 1400px) 100vw, 1400px"
+              className="object-cover w-full h-full object-top"
               priority
+              fetchPriority="high"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent to-transparent opacity-60 pointer-events-none" />
+            <div
+              className="absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent to-transparent opacity-60 pointer-events-none"
+              aria-hidden="true"
+            />
           </div>
         </div>
       </section>
 
       {/* Mission / Vision */}
-      <section className="py-20 lg:py-28 bg-cream">
+      <section className="pt-24 pb-20 lg:pt-32 lg:pb-28 bg-cream">
         <Container>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
@@ -136,11 +178,11 @@ export default function SobrePage() {
               <Card key={item.label} variant="elevated" hoverable>
                 <CardContent>
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cream text-ink mb-5">
-                    <item.icon className="h-6 w-6" />
+                    <item.icon className="h-6 w-6" aria-hidden="true" />
                   </div>
-                  <h3 className="font-display text-xl font-bold text-ink mb-3">
+                  <h2 className="font-display text-xl font-bold text-ink mb-3">
                     {item.label}
-                  </h3>
+                  </h2>
                   <p className="text-forest-600 leading-relaxed text-[0.925rem]">
                     {item.text}
                   </p>
@@ -163,11 +205,11 @@ export default function SobrePage() {
             {values.map((v) => (
               <div key={v.title} className="text-center p-6">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-champagne-300/30 text-gold-dark mx-auto mb-4">
-                  <v.icon className="h-6 w-6" />
+                  <v.icon className="h-6 w-6" aria-hidden="true" />
                 </div>
-                <h4 className="font-display text-lg font-bold text-ink mb-2">
+                <h3 className="font-display text-lg font-bold text-ink mb-2">
                   {v.title}
-                </h4>
+                </h3>
                 <p className="text-forest-600 text-sm leading-relaxed">
                   {v.description}
                 </p>
@@ -182,7 +224,10 @@ export default function SobrePage() {
         <Container narrow>
           <SectionTitle label="Nossa Trajetória" title="Marcos importantes" />
           <div className="relative">
-            <div className="absolute left-4 lg:left-1/2 top-0 bottom-0 w-px bg-forest-600/40 lg:-translate-x-px" />
+            <div
+              className="absolute left-4 lg:left-1/2 top-0 bottom-0 w-px bg-forest-600/40 lg:-translate-x-px"
+              aria-hidden="true"
+            />
             <div className="space-y-10">
               {timeline.map((item, i) => (
                 <div
@@ -230,11 +275,15 @@ export default function SobrePage() {
             Estamos prontos para conhecer seu caso e apresentar as melhores
             soluções.
           </p>
-          <Link href="/contato">
-            <Button variant="secondary" size="lg" className="group">
-              Entre em Contato
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Button>
+          <Link
+            href="/contato"
+            className={cn(
+              buttonVariants({ variant: "secondary", size: "lg" }),
+              "group no-underline"
+            )}
+          >
+            Entre em Contato
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>
         </Container>
       </section>

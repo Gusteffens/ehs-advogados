@@ -31,7 +31,7 @@ export function FloatingWhatsApp() {
       placement="floating-whatsapp"
       label="Botão flutuante WhatsApp"
       aria-label="Falar com o escritório pelo WhatsApp"
-      className={`${visibilityClasses} fixed right-5 bottom-5 z-40 items-center gap-2.5 rounded-full bg-forest-900 text-cream border border-gold/35 pl-2.5 pr-4 py-2 shadow-xl shadow-ink/30 transition-all duration-300 hover:-translate-y-0.5 hover:border-gold hover:shadow-2xl no-underline`}
+      className={`${visibilityClasses} fixed right-5 bottom-5 z-40 items-center gap-2.5 rounded-full bg-forest-900 text-cream border border-gold/35 p-2 sm:pl-2.5 sm:pr-4 shadow-xl shadow-ink/30 transition-all duration-300 hover:-translate-y-0.5 hover:border-gold hover:shadow-2xl no-underline`}
     >
       <span
         aria-hidden="true"

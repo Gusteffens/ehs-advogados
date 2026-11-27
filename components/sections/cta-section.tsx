@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Container } from "@/components/ui/container";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { WhatsAppLink } from "@/components/tracking/whatsapp-link";
 import { SITE_CONFIG } from "@/lib/site-config";
+import { cn } from "@/lib/utils";
 
 export function CtaSection() {
   return (
     <section className="py-24 lg:py-28 bg-forest-900 relative overflow-hidden">
       {/* Decorative */}
-      <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         <div className="absolute top-0 right-0 w-96 h-96 bg-gold/10 rounded-full blur-[120px]" />
         <div className="absolute bottom-0 left-0 w-72 h-72 bg-gold/5 rounded-full blur-[100px]" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-forest-600/10 rounded-full blur-[150px]" />
@@ -30,25 +31,27 @@ export function CtaSection() {
             seu caso e apresentar as melhores estratégias.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/contato">
-              <Button variant="secondary" size="lg" className="group text-base">
-                Fale com um Advogado
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Button>
+            <Link
+              href="/contato"
+              className={cn(
+                buttonVariants({ variant: "secondary", size: "lg" }),
+                "group text-base no-underline"
+              )}
+            >
+              Fale com um Advogado
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
             <WhatsAppLink
               href={SITE_CONFIG.contact.whatsappWithText}
               page="/"
               placement="cta-section"
               label="WhatsApp CTA Home"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "lg" }),
+                "border-cream/30 text-cream hover:bg-cream/10 hover:text-cream text-base no-underline"
+              )}
             >
-              <Button
-                variant="outline"
-                size="lg"
-                className="border-cream/30 text-cream hover:bg-cream/10 hover:text-cream text-base"
-              >
-                WhatsApp
-              </Button>
+              WhatsApp
             </WhatsAppLink>
           </div>
         </div>

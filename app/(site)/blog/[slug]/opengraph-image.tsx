@@ -9,6 +9,16 @@ export const size = {
 };
 export const contentType = "image/png";
 
+function clampTitle(rawTitle: string, maxLength = 115): string {
+  const normalized = rawTitle.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLength) return normalized;
+
+  const sliced = normalized.slice(0, maxLength - 1);
+  const lastSpace = sliced.lastIndexOf(" ");
+  const boundary = lastSpace > maxLength * 0.6 ? lastSpace : maxLength - 1;
+  return `${sliced.slice(0, boundary).trimEnd()}…`;
+}
+
 export default async function BlogPostOpenGraphImage({
   params,
 }: {
@@ -17,9 +27,11 @@ export default async function BlogPostOpenGraphImage({
   const { slug } = await params;
   const post = await getPublishedBlogPostBySlug(slug);
 
-  const title = post?.title ?? "Blog Jurídico";
+  const title = clampTitle(post?.title ?? "Blog Jurídico");
   const categoryName = post?.categories?.name ?? "Artigo Jurídico";
   const authorName = post?.authors?.full_name ?? SITE_CONFIG.legalName;
+  const titleFontSize =
+    title.length > 90 ? "42px" : title.length > 60 ? "48px" : "56px";
 
   return new ImageResponse(
     (
@@ -85,11 +97,13 @@ export default async function BlogPostOpenGraphImage({
             flexDirection: "column",
             gap: "20px",
             maxWidth: "1020px",
+            maxHeight: "260px",
+            overflow: "hidden",
           }}
         >
           <div
             style={{
-              fontSize: title.length > 85 ? "46px" : "56px",
+              fontSize: titleFontSize,
               fontWeight: 700,
               lineHeight: 1.15,
               color: "#EEEDE5",

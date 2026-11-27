@@ -92,14 +92,12 @@ const fetchBlogCategories = unstable_cache(
       throw new Error(`Failed to load blog categories: ${error.message}`);
     }
 
-    return ((data ?? []) as RawCategoryRecord[])
-      .map((category) => ({
-        id: String(category.id),
-        name: category.name,
-        slug: category.slug,
-        color_hex: category.color_hex,
-      }))
-      .filter((category) => category.name !== "Direito Trabalhista");
+    return ((data ?? []) as RawCategoryRecord[]).map((category) => ({
+      id: String(category.id),
+      name: category.name,
+      slug: category.slug,
+      color_hex: category.color_hex,
+    }));
   },
   ["blog-categories"],
   {
@@ -107,6 +105,11 @@ const fetchBlogCategories = unstable_cache(
     tags: ["blog-categories"],
   }
 );
+
+function getPublishedAtFilter(): string {
+  const now = new Date().toISOString();
+  return `published_at.is.null,published_at.lte.${now}`;
+}
 
 const fetchPublishedBlogPosts = unstable_cache(
   async (): Promise<BlogPostSummary[]> => {
@@ -120,6 +123,7 @@ const fetchPublishedBlogPosts = unstable_cache(
       .from("posts")
       .select(listSelect)
       .eq("status", "published")
+      .or(getPublishedAtFilter())
       .order("published_at", { ascending: false });
 
     if (error) {
@@ -147,6 +151,7 @@ const fetchLatestPublishedBlogPosts = unstable_cache(
       .from("posts")
       .select(listSelect)
       .eq("status", "published")
+      .or(getPublishedAtFilter())
       .order("published_at", { ascending: false })
       .limit(limit);
 
@@ -176,6 +181,7 @@ const fetchPublishedBlogPostBySlug = unstable_cache(
       .select(detailSelect)
       .eq("slug", slug)
       .eq("status", "published")
+      .or(getPublishedAtFilter())
       .maybeSingle();
 
     if (error) {
@@ -206,7 +212,8 @@ const fetchPublishedBlogSlugs = unstable_cache(
     const { data, error } = await supabase
       .from("posts")
       .select("slug")
-      .eq("status", "published");
+      .eq("status", "published")
+      .or(getPublishedAtFilter());
 
     if (error) {
       throw new Error(`Failed to load blog slugs: ${error.message}`);
@@ -234,7 +241,8 @@ const fetchPublishedPostSlugsForSitemap = unstable_cache(
     const { data, error } = await supabase
       .from("posts")
       .select("slug, updated_at, published_at")
-      .eq("status", "published");
+      .eq("status", "published")
+      .or(getPublishedAtFilter());
 
     if (error) {
       throw new Error(`Failed to load sitemap posts: ${error.message}`);
@@ -251,6 +259,84 @@ const fetchPublishedPostSlugsForSitemap = unstable_cache(
   }
 );
 
+const fetchRelatedBlogPosts = unstable_cache(
+  async (
+    categoryId: string | null,
+    excludePostId: string,
+    limit: number
+  ): Promise<BlogPostSummary[]> => {
+    const supabase = createPublicClient();
+
+    if (!supabase || limit <= 0) {
+      return [];
+    }
+
+    const publishedFilter = getPublishedAtFilter();
+    const picked: BlogPostSummary[] = [];
+    const pickedIds = new Set<string>([excludePostId]);
+
+    if (categoryId) {
+      const { data: sameCategoryData, error: sameCategoryError } = await supabase
+        .from("posts")
+        .select(listSelect)
+        .eq("status", "published")
+        .or(publishedFilter)
+        .eq("category_id", categoryId)
+        .neq("id", excludePostId)
+        .order("published_at", { ascending: false })
+        .limit(limit);
+
+      if (sameCategoryError) {
+        throw new Error(
+          `Failed to load related blog posts: ${sameCategoryError.message}`
+        );
+      }
+
+      for (const row of (sameCategoryData ?? []) as unknown as RawBlogPostRecord[]) {
+        const mapped = mapPost(row);
+        if (!pickedIds.has(mapped.id)) {
+          picked.push(mapped);
+          pickedIds.add(mapped.id);
+        }
+      }
+    }
+
+    if (picked.length < limit) {
+      const remaining = limit - picked.length;
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("posts")
+        .select(listSelect)
+        .eq("status", "published")
+        .or(publishedFilter)
+        .neq("id", excludePostId)
+        .order("published_at", { ascending: false })
+        .limit(remaining + picked.length);
+
+      if (fallbackError) {
+        throw new Error(
+          `Failed to load fallback related blog posts: ${fallbackError.message}`
+        );
+      }
+
+      for (const row of (fallbackData ?? []) as unknown as RawBlogPostRecord[]) {
+        if (picked.length >= limit) break;
+        const mapped = mapPost(row);
+        if (!pickedIds.has(mapped.id)) {
+          picked.push(mapped);
+          pickedIds.add(mapped.id);
+        }
+      }
+    }
+
+    return picked.slice(0, limit);
+  },
+  ["related-blog-posts"],
+  {
+    revalidate: 300,
+    tags: ["blog-posts"],
+  }
+);
+
 export async function getBlogCategories(): Promise<CategoryOption[]> {
   try {
     return await fetchBlogCategories();
@@ -260,8 +346,11 @@ export async function getBlogCategories(): Promise<CategoryOption[]> {
   }
 }
 
-export async function getPublishedBlogPosts(): Promise<BlogPostSummary[]> {
+export async function getPublishedBlogPosts(limit?: number): Promise<BlogPostSummary[]> {
   try {
+    if (typeof limit === "number" && limit > 0) {
+      return await fetchLatestPublishedBlogPosts(limit);
+    }
     return await fetchPublishedBlogPosts();
   } catch (error) {
     console.error("Failed to load published blog posts", error);
@@ -312,23 +401,14 @@ export async function getRelatedBlogPosts(
   excludePostId: string,
   limit = 3
 ): Promise<BlogPostSummary[]> {
-  const posts = await getPublishedBlogPosts();
-  const candidates = posts.filter((post) => post.id !== excludePostId);
-
-  if (candidates.length === 0 || limit <= 0) {
+  if (limit <= 0) {
     return [];
   }
 
-  const sameCategory = categoryId
-    ? candidates.filter((post) => post.category_id === categoryId)
-    : [];
-
-  if (sameCategory.length >= limit) {
-    return sameCategory.slice(0, limit);
+  try {
+    return await fetchRelatedBlogPosts(categoryId, excludePostId, limit);
+  } catch (error) {
+    console.error("Failed to load related blog posts", error);
+    return [];
   }
-
-  const pickedIds = new Set(sameCategory.map((post) => post.id));
-  const fallback = candidates.filter((post) => !pickedIds.has(post.id));
-
-  return [...sameCategory, ...fallback].slice(0, limit);
 }

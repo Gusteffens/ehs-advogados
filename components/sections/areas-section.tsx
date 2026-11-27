@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   Briefcase,
-  Users,
+  Sprout,
   FileText,
   Scale,
   ShieldCheck,
@@ -36,7 +36,7 @@ const areaVisuals: Record<string, { icon: LucideIcon; iconBg: string }> = {
       "bg-forest-100 text-ink group-hover:bg-forest-900 group-hover:text-gold",
   },
   agrario: {
-    icon: Users,
+    icon: Sprout,
     iconBg:
       "bg-champagne-300/30 text-gold-dark group-hover:bg-gold-dark group-hover:text-cream",
   },

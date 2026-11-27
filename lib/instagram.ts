@@ -170,8 +170,6 @@ async function fetchInstagramFeedRaw(): Promise<InstagramPost[] | null> {
     return null;
   }
 
-  await refreshInstagramTokenIfNeeded();
-
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("instagram_config")
@@ -201,10 +199,15 @@ async function fetchInstagramFeedRaw(): Promise<InstagramPost[] | null> {
 
   const filtered = rawPosts.filter((post) => {
     const caption = (post.caption ?? "").toLowerCase();
+    const isVideo = post.media_type === "VIDEO";
+    const renderableImageUrl = isVideo
+      ? post.thumbnail_url
+      : (post.media_url ?? post.thumbnail_url);
+
     return (
       !caption.includes("#exclusivo-ig") &&
       !caption.includes("#exclusivoig") &&
-      Boolean(post.media_url || post.thumbnail_url) &&
+      Boolean(renderableImageUrl) &&
       Boolean(post.permalink)
     );
   });
@@ -213,8 +216,8 @@ async function fetchInstagramFeedRaw(): Promise<InstagramPost[] | null> {
     id: post.id,
     caption: post.caption,
     media_url:
-      post.media_type === "VIDEO" && post.thumbnail_url
-        ? post.thumbnail_url
+      post.media_type === "VIDEO"
+        ? (post.thumbnail_url ?? "")
         : (post.media_url ?? post.thumbnail_url ?? ""),
     permalink: post.permalink ?? SITE_CONFIG.social.instagram,
     media_type: post.media_type ?? "IMAGE",

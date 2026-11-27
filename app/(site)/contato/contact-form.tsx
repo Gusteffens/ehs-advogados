@@ -3,9 +3,16 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Send, CheckCircle, AlertCircle, RotateCcw } from "lucide-react";
+import {
+  Send,
+  CheckCircle,
+  AlertCircle,
+  RotateCcw,
+  MessageCircle,
+} from "lucide-react";
 import { submitContactForm, type ContactFormState } from "./actions";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { WhatsAppLink } from "@/components/tracking/whatsapp-link";
 import { SITE_CONFIG } from "@/lib/site-config";
 import { getConsentState, trackContactLead } from "@/lib/tracking";
 import { cn } from "@/lib/utils";
@@ -116,6 +123,13 @@ function ContactFormInner({ onReset }: { onReset: () => void }) {
   const fbclid = searchParams.get("fbclid") ?? "";
 
   if (state.success) {
+    const escalationMessage = subject
+      ? `Olá, acabei de enviar uma mensagem pelo site sobre ${subject} e gostaria de agilizar o atendimento.`
+      : "Olá, acabei de enviar uma mensagem pelo site e gostaria de agilizar o atendimento.";
+    const whatsappEscalationHref = `${SITE_CONFIG.contact.whatsapp}?text=${encodeURIComponent(
+      escalationMessage
+    )}`;
+
     return (
       <div className="rounded-2xl bg-cream border border-forest-200 p-8 text-center">
         <CheckCircle className="h-12 w-12 text-forest-600 mx-auto mb-4" />
@@ -123,10 +137,31 @@ function ContactFormInner({ onReset }: { onReset: () => void }) {
           Mensagem enviada!
         </h3>
         <p className="text-forest-600 mb-6">{state.message}</p>
-        <Button type="button" variant="outline" size="md" onClick={onReset}>
-          <RotateCcw className="h-4 w-4" />
-          Enviar outra mensagem
-        </Button>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <WhatsAppLink
+            href={whatsappEscalationHref}
+            page={pathname}
+            placement="contact-form-success"
+            label="WhatsApp Pós-Formulário"
+            className={cn(
+              buttonVariants({ variant: "secondary", size: "md" }),
+              "no-underline w-full sm:w-auto"
+            )}
+          >
+            <MessageCircle className="h-4 w-4" />
+            Falar agora no WhatsApp
+          </WhatsAppLink>
+          <Button
+            type="button"
+            variant="outline"
+            size="md"
+            onClick={onReset}
+            className="w-full sm:w-auto"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Enviar outra mensagem
+          </Button>
+        </div>
       </div>
     );
   }
@@ -239,7 +274,7 @@ function ContactFormInner({ onReset }: { onReset: () => void }) {
             onChange={(e) => setSubjectInput(e.target.value)}
             className={cn(
               inputClasses,
-              "appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%233B5A3C%22%20d%3D%22M2%204l4%204%204-4%22/%3E%3C/svg%3E')] bg-no-repeat bg-[right_1rem_center]"
+              "pr-10 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%233B5A3C%22%20d%3D%22M2%204l4%204%204-4%22/%3E%3C/svg%3E')] bg-no-repeat bg-[right_1rem_center]"
             )}
           >
             <option value="">Selecione um assunto</option>

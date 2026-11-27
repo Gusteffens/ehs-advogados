@@ -1,19 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import {
   ArrowRight,
   ArrowUpRight,
-  ChevronDown,
   FileSearch,
   Gavel,
   Instagram,
   Lock,
   Mail,
   MapPin,
-  Menu,
   MessageCircle,
   Phone,
   Play,
@@ -21,14 +18,23 @@ import {
   ShieldAlert,
   ShieldCheck,
   UserCheck,
-  X,
 } from "lucide-react";
 import { Container } from "@/components/ui/container";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { SectionTitle } from "@/components/ui/section-title";
 import { WhatsAppLink } from "@/components/tracking/whatsapp-link";
+import {
+  LandingHeader,
+  type LandingNavLink,
+} from "@/components/landing/landing-header";
+import { LandingFooter } from "@/components/landing/landing-footer";
+import {
+  FaqAccordion,
+  type FaqAccordionItem,
+} from "@/components/landing/faq-accordion";
+import { LandingLeadForm } from "@/components/landing/landing-lead-form";
 import { SITE_CONFIG } from "@/lib/site-config";
-import { getConsentState, trackWhatsAppClick } from "@/lib/tracking";
+import { getConsentState } from "@/lib/tracking";
 import { cn } from "@/lib/utils";
 import "./penal.css";
 
@@ -45,7 +51,7 @@ const alessandra =
   SITE_CONFIG.team.find((member) => member.slug === "alessandra-steffens") ??
   SITE_CONFIG.team[0];
 
-const navLinks = [
+const navLinks: readonly LandingNavLink[] = [
   { href: "#atuacao", label: "Atuação" },
   { href: "#como-ajudar", label: "Como podemos ajudar" },
   { href: "#escritorio", label: "Especialista" },
@@ -126,46 +132,12 @@ const methodSteps = [
   },
 ];
 
-const faqs = [
-  {
-    question: "Quando devo procurar um advogado criminal?",
-    answer:
-      "Assim que houver prisão, intimação, investigação, acusação ou dúvida sobre possível repercussão criminal. A orientação inicial ajuda a avaliar os próximos passos.",
-  },
-  {
-    question: "Recebi uma intimação. O que devo fazer?",
-    answer:
-      "Preserve o documento e procure orientação antes da data indicada. A providência depende do conteúdo e da finalidade da intimação.",
-  },
-  {
-    question: "Posso ser acompanhado antes de prestar depoimento?",
-    answer:
-      "Em geral, é possível obter orientação jurídica prévia e acompanhamento. As condições concretas devem ser verificadas conforme o procedimento.",
-  },
-  {
-    question: "O escritório atende situações urgentes?",
-    answer:
-      "Sim, o escritório recebe contatos urgentes. A disponibilidade e as medidas possíveis são avaliadas conforme cada situação.",
-  },
-  {
-    question: "Um familiar pode solicitar atendimento para uma pessoa presa?",
-    answer:
-      "Sim. O familiar pode fornecer as informações iniciais para avaliação da situação e das providências possíveis.",
-  },
-];
+interface PenalPageContentProps {
+  faqs: readonly FaqAccordionItem[];
+}
 
-export default function PenalPageContent() {
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [openFaq, setOpenFaq] = useState<Record<number, boolean>>({ 0: true });
+export default function PenalPageContent({ faqs }: PenalPageContentProps) {
   const [bannerVisible, setBannerVisible] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   useEffect(() => {
     const syncConsent = () => {
@@ -175,70 +147,6 @@ export default function PenalPageContent() {
     window.addEventListener("ehs:consent-change", syncConsent);
     return () => window.removeEventListener("ehs:consent-change", syncConsent);
   }, []);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        setMenuOpen(false);
-      }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setMenuOpen(false);
-      }
-    };
-
-    window.addEventListener("resize", handleResize, { passive: true });
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("resize", handleResize);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [menuOpen]);
-
-  const toggleFaq = (index: number) => {
-    setOpenFaq((prev) => ({ ...prev, [index]: !prev[index] }));
-  };
-
-  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const target = e.currentTarget;
-    const name = (
-      target.elements.namedItem("name") as HTMLInputElement
-    ).value.trim();
-    const phone = (
-      target.elements.namedItem("phone") as HTMLInputElement
-    ).value.trim();
-    const message = (
-      target.elements.namedItem("message") as HTMLTextAreaElement
-    ).value.trim();
-
-    const textLines = [
-      "Olá, encontrei a página de Direito Penal da EHS Advocacia e gostaria de solicitar atendimento.",
-      "",
-      `Nome: ${name}`,
-      phone ? `Telefone: ${phone}` : null,
-      `Mensagem: ${message}`,
-    ].filter(Boolean);
-
-    trackWhatsAppClick({
-      page: "/penal",
-      placement: "penal-whatsapp-form",
-      label: "Formulário WhatsApp Penal",
-    });
-
-    const text = textLines.join("\n");
-    window.open(
-      `${SITE_CONFIG.contact.whatsapp}?text=${encodeURIComponent(text)}`,
-      "_blank",
-      "noopener,noreferrer"
-    );
-  };
 
   const floatingVisibility = bannerVisible
     ? "hidden sm:inline-flex"
@@ -250,173 +158,16 @@ export default function PenalPageContent() {
         Pular para o conteúdo
       </a>
 
-      {/* ── Header LP (mesmo padrão visual do site principal) ── */}
-      <header
-        className={cn(
-          "fixed top-0 left-0 right-0 z-50 transition-all duration-500",
-          scrolled
-            ? "bg-cream shadow-md shadow-forest-900/5 py-3 lg:bg-cream/95 lg:backdrop-blur-xl"
-            : "bg-transparent py-5"
-        )}
-      >
-        <Container>
-          <nav
-            className="flex items-center justify-between gap-4"
-            aria-label="Navegação principal"
-          >
-            <a
-              href="#topo"
-              className="group flex items-center gap-3 no-underline"
-              aria-label={`${SITE_CONFIG.legalName} — início`}
-            >
-              <div className="relative flex h-11 w-11 items-center justify-center rounded-xl overflow-hidden transition-transform duration-300 group-hover:scale-105">
-                <Image
-                  src="/images/logo-ehs-monogram.png"
-                  alt={SITE_CONFIG.shortName}
-                  width={44}
-                  height={44}
-                  className={cn(
-                    "object-contain transition-all duration-500",
-                    scrolled ? "brightness-0" : "brightness-100"
-                  )}
-                  priority
-                />
-              </div>
-              <div className="flex flex-col">
-                <span
-                  className={cn(
-                    "font-display text-lg font-bold leading-tight tracking-tight transition-colors duration-500",
-                    scrolled ? "text-ink" : "text-cream"
-                  )}
-                >
-                  Erlo, Haas & Steffens
-                </span>
-                <span
-                  className={cn(
-                    "font-body text-[10px] font-semibold uppercase tracking-[0.2em] leading-none mt-0.5 transition-colors duration-500",
-                    scrolled ? "text-gold-dark" : "text-gold/85"
-                  )}
-                >
-                  Direito Criminal
-                </span>
-              </div>
-            </a>
-
-            {/* Desktop Nav */}
-            <div className="hidden lg:flex items-center gap-1">
-              {navLinks.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-300 no-underline",
-                    scrolled
-                      ? "text-forest-600 hover:text-ink hover:bg-forest-100/60"
-                      : "text-cream/80 hover:text-cream hover:bg-cream/10"
-                  )}
-                >
-                  {link.label}
-                </a>
-              ))}
-            </div>
-
-            {/* Desktop CTA */}
-            <div className="hidden lg:flex items-center gap-3">
-              <WhatsAppLink
-                href={WHATSAPP_LINK}
-                page="/penal"
-                placement="header-cta"
-                label="Header Penal"
-                className="no-underline"
-              >
-                <Button variant="secondary" size="sm">
-                  Solicitar atendimento
-                </Button>
-              </WhatsAppLink>
-            </div>
-
-            {/* Mobile Toggle */}
-            <button
-              type="button"
-              onClick={() => setMenuOpen((open) => !open)}
-              className={cn(
-                "lg:hidden relative z-50 flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
-                menuOpen
-                  ? "text-ink hover:bg-forest-100"
-                  : scrolled
-                    ? "text-ink hover:bg-forest-100"
-                    : "text-cream hover:bg-cream/10"
-              )}
-              aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
-              aria-expanded={menuOpen}
-              aria-controls="penal-mobile-drawer"
-            >
-              {menuOpen ? (
-                <X className="h-5 w-5" />
-              ) : (
-                <Menu className="h-5 w-5" />
-              )}
-            </button>
-          </nav>
-        </Container>
-
-        {/* Mobile Drawer */}
-        {menuOpen && (
-          <>
-            <div
-              className="fixed inset-0 bg-ink/60 lg:hidden"
-              onClick={() => setMenuOpen(false)}
-              aria-hidden="true"
-            />
-            <div
-              id="penal-mobile-drawer"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Menu de navegação"
-              className="fixed top-0 right-0 bottom-0 w-[85%] max-w-sm bg-cream shadow-2xl lg:hidden"
-            >
-              <div className="flex flex-col h-full pt-24 px-8 pb-8">
-                <div className="flex flex-col gap-1">
-                  {navLinks.map((link) => (
-                    <a
-                      key={link.href}
-                      href={link.href}
-                      onClick={() => setMenuOpen(false)}
-                      className="block px-4 py-3 text-lg font-medium rounded-xl text-ink hover:bg-forest-100 transition-colors no-underline"
-                    >
-                      {link.label}
-                    </a>
-                  ))}
-                </div>
-
-                <div className="mt-auto space-y-3">
-                  <div className="h-px bg-forest-600/25 mb-4" />
-                  <WhatsAppLink
-                    href={WHATSAPP_LINK}
-                    page="/penal"
-                    placement="mobile-menu-cta"
-                    label="Menu Mobile Penal"
-                    onClick={() => setMenuOpen(false)}
-                    className="block no-underline"
-                  >
-                    <Button variant="secondary" size="md" className="w-full">
-                      Solicitar atendimento
-                    </Button>
-                  </WhatsAppLink>
-                  <Link
-                    href="/"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-forest-600 hover:text-ink no-underline"
-                  >
-                    Site institucional
-                    <ArrowUpRight className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </header>
+      <LandingHeader
+        subtitle="Direito Criminal"
+        navLinks={navLinks}
+        topHref="#topo"
+        whatsappUrl={WHATSAPP_LINK}
+        page="/penal"
+        ctaLabel="Solicitar atendimento"
+        showCtaIcon={false}
+        drawerId="penal-mobile-drawer"
+      />
 
       <main id="conteudo">
         {/* ── Hero Section ── */}
@@ -483,26 +234,23 @@ export default function PenalPageContent() {
                     page="/penal"
                     placement="hero-primary"
                     label="Hero Penal"
-                    className="no-underline"
+                    className={cn(
+                      buttonVariants({ variant: "secondary", size: "lg" }),
+                      "group w-full sm:w-auto text-base px-8 no-underline"
+                    )}
                   >
-                    <Button
-                      variant="secondary"
-                      size="lg"
-                      className="group w-full sm:w-auto text-base px-8"
-                    >
-                      Falar agora pelo WhatsApp
-                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                    </Button>
+                    Falar agora pelo WhatsApp
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </WhatsAppLink>
 
-                  <a href="#como-ajudar" className="no-underline">
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="w-full sm:w-auto border-cream/30 text-cream hover:bg-cream/10 hover:text-cream text-base px-7"
-                    >
-                      Ver como podemos ajudar
-                    </Button>
+                  <a
+                    href="#como-ajudar"
+                    className={cn(
+                      buttonVariants({ variant: "outline", size: "lg" }),
+                      "w-full sm:w-auto border-cream/30 text-cream hover:bg-cream/10 hover:text-cream text-base px-7 no-underline"
+                    )}
+                  >
+                    Ver como podemos ajudar
                   </a>
                 </div>
 
@@ -661,12 +409,13 @@ export default function PenalPageContent() {
                 page="/penal"
                 placement="help-section"
                 label="Como Podemos Ajudar Penal"
-                className="no-underline inline-block"
+                className={cn(
+                  buttonVariants({ variant: "primary", size: "lg" }),
+                  "group text-base no-underline"
+                )}
               >
-                <Button variant="primary" size="lg" className="group text-base">
-                  Explicar minha situação pelo WhatsApp
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </Button>
+                Explicar minha situação pelo WhatsApp
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </WhatsAppLink>
             </div>
           </Container>
@@ -804,16 +553,13 @@ export default function PenalPageContent() {
                     page="/penal"
                     placement="office-contact-card"
                     label="Card Contato Penal"
-                    className="block no-underline mb-6"
+                    className={cn(
+                      buttonVariants({ variant: "secondary", size: "lg" }),
+                      "w-full text-base no-underline mb-6"
+                    )}
                   >
-                    <Button
-                      variant="secondary"
-                      size="lg"
-                      className="w-full text-base"
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                      Conversar pelo WhatsApp
-                    </Button>
+                    <MessageCircle className="h-4 w-4" />
+                    Conversar pelo WhatsApp
                   </WhatsAppLink>
 
                   <address className="not-italic border-t border-forest-100 pt-5 space-y-3 text-sm text-forest-600">
@@ -834,7 +580,8 @@ export default function PenalPageContent() {
                     <div className="flex items-start gap-3">
                       <MapPin className="h-4 w-4 text-gold-dark shrink-0 mt-0.5" />
                       <span>
-                        {SITE_CONFIG.address.street}, {SITE_CONFIG.address.building}
+                        {SITE_CONFIG.address.street},{" "}
+                        {SITE_CONFIG.address.building}
                         <br />
                         {SITE_CONFIG.address.neighborhood} —{" "}
                         {SITE_CONFIG.address.city}/{SITE_CONFIG.address.state}
@@ -864,49 +611,15 @@ export default function PenalPageContent() {
                 />
               </div>
 
-              <div className="lg:col-span-7 space-y-3">
-                {faqs.map((faq, idx) => {
-                  const isOpen = !!openFaq[idx];
-                  return (
-                    <div
-                      key={faq.question}
-                      className="rounded-2xl bg-white border border-forest-100 overflow-hidden transition-colors hover:border-forest-200"
-                    >
-                      <h3 className="m-0">
-                        <button
-                          type="button"
-                          aria-expanded={isOpen}
-                          aria-controls={`faq-${idx}`}
-                          id={`faq-btn-${idx}`}
-                          onClick={() => toggleFaq(idx)}
-                          className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left font-display text-lg sm:text-xl font-bold text-ink cursor-pointer"
-                        >
-                          <span>{faq.question}</span>
-                          <ChevronDown
-                            className={cn(
-                              "h-5 w-5 shrink-0 text-gold-dark transition-transform duration-300",
-                              isOpen && "rotate-180"
-                            )}
-                            aria-hidden="true"
-                          />
-                        </button>
-                      </h3>
-                      <div
-                        id={`faq-${idx}`}
-                        role="region"
-                        aria-labelledby={`faq-btn-${idx}`}
-                        hidden={!isOpen}
-                        className="px-6 pb-5"
-                      >
-                        <p className="text-sm sm:text-base text-forest-600 leading-relaxed m-0">
-                          {faq.answer}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="lg:col-span-7 space-y-6">
+                <FaqAccordion
+                  items={faqs}
+                  defaultOpenIndex={0}
+                  allowMultiple
+                  idPrefix="penal-faq"
+                />
 
-                <div className="mt-6 rounded-2xl bg-forest-900 text-cream p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-5 border border-forest-600/40">
+                <div className="rounded-2xl bg-forest-900 text-cream p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-5 border border-forest-600/40">
                   <div>
                     <strong className="block font-display text-2xl font-bold text-cream mb-1">
                       Ainda tem dúvidas?
@@ -920,15 +633,12 @@ export default function PenalPageContent() {
                     page="/penal"
                     placement="faq-cta"
                     label="FAQ Penal"
-                    className="no-underline shrink-0"
+                    className={cn(
+                      buttonVariants({ variant: "secondary", size: "md" }),
+                      "w-full sm:w-auto shrink-0 no-underline"
+                    )}
                   >
-                    <Button
-                      variant="secondary"
-                      size="md"
-                      className="w-full sm:w-auto"
-                    >
-                      Falar com a equipe
-                    </Button>
+                    Falar com a equipe
                   </WhatsAppLink>
                 </div>
               </div>
@@ -955,8 +665,9 @@ export default function PenalPageContent() {
                   Conte brevemente como podemos ajudar
                 </h2>
                 <p className="text-forest-600 text-base sm:text-lg leading-relaxed mb-6">
-                  Preencha os campos ao lado para iniciar uma conversa
-                  diretamente com a equipe pelo WhatsApp.
+                  Preencha os campos ao lado para registrar seu pedido de
+                  atendimento com sigilo e iniciar a conversa diretamente pelo
+                  WhatsApp.
                 </p>
                 <div className="inline-flex items-center gap-2 rounded-xl bg-champagne-300/30 border border-champagne-200 px-4 py-2.5 text-xs font-semibold text-gold-dark">
                   <Lock className="h-4 w-4 shrink-0" />
@@ -965,230 +676,28 @@ export default function PenalPageContent() {
               </div>
 
               <div className="lg:col-span-7">
-                <form
-                  id="whatsapp-contact-form"
-                  onSubmit={handleFormSubmit}
-                  className="rounded-2xl bg-white border border-forest-100 p-6 sm:p-8 shadow-lg shadow-forest-900/5"
-                >
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div className="flex flex-col gap-2">
-                      <label
-                        htmlFor="contact-name"
-                        className="text-xs font-bold uppercase tracking-wider text-forest-900"
-                      >
-                        Nome
-                      </label>
-                      <input
-                        id="contact-name"
-                        name="name"
-                        type="text"
-                        autoComplete="name"
-                        required
-                        placeholder="Como podemos chamar você?"
-                        className="w-full rounded-xl border border-forest-200 bg-cream-light/50 px-4 py-3 text-sm text-ink placeholder:text-forest-400 focus:border-gold-dark focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/40 transition-all"
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <label
-                        htmlFor="contact-phone"
-                        className="text-xs font-bold uppercase tracking-wider text-forest-900"
-                      >
-                        Telefone
-                      </label>
-                      <input
-                        id="contact-phone"
-                        name="phone"
-                        type="tel"
-                        autoComplete="tel"
-                        inputMode="tel"
-                        required
-                        placeholder="(49) 99999-9999"
-                        className="w-full rounded-xl border border-forest-200 bg-cream-light/50 px-4 py-3 text-sm text-ink placeholder:text-forest-400 focus:border-gold-dark focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/40 transition-all"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2 flex flex-col gap-2">
-                      <label
-                        htmlFor="contact-message"
-                        className="text-xs font-bold uppercase tracking-wider text-forest-900"
-                      >
-                        Mensagem
-                      </label>
-                      <textarea
-                        id="contact-message"
-                        name="message"
-                        rows={5}
-                        maxLength={700}
-                        required
-                        placeholder="Descreva brevemente a situação, sem incluir documentos ou dados sensíveis."
-                        className="w-full rounded-xl border border-forest-200 bg-cream-light/50 px-4 py-3 text-sm text-ink placeholder:text-forest-400 focus:border-gold-dark focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/40 transition-all resize-y min-h-[130px]"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2 pt-1">
-                      <Button
-                        variant="secondary"
-                        size="lg"
-                        type="submit"
-                        className="group w-full text-base"
-                      >
-                        Enviar pelo WhatsApp
-                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                      </Button>
-                      <p className="mt-3 text-xs text-forest-600 leading-relaxed">
-                        Os dados não são armazenados nesta página. Ao enviar, o
-                        WhatsApp será aberto com a mensagem preenchida.
-                      </p>
-                    </div>
-                  </div>
-                </form>
+                <LandingLeadForm
+                  sourcePage="/penal"
+                  defaultSubject="Atendimento em Direito Penal"
+                  nameLabel="Nome"
+                  namePlaceholder="Como podemos chamar você?"
+                  phoneLabel="Telefone / WhatsApp"
+                  phonePlaceholder="(49) 99999-9999"
+                  showEmailField
+                  messageLabel="Mensagem"
+                  messagePlaceholder="Descreva brevemente a situação, sem incluir documentos ou dados sensíveis."
+                  submitLabel="Enviar pelo WhatsApp"
+                  submitVariant="secondary"
+                  trackingPlacement="penal-whatsapp-form"
+                  trackingLabel="Formulário WhatsApp Penal"
+                />
               </div>
             </div>
           </Container>
         </section>
       </main>
 
-      {/* ── Footer LP (padrão visual do site principal) ── */}
-      <footer className="relative bg-forest-900 text-cream/85 overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-dark via-gold to-gold-dark" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gold/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
-
-        <Container className="relative">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8 py-16">
-            {/* Brand */}
-            <div>
-              <Link
-                href="/"
-                className="group inline-flex items-center gap-3 no-underline mb-5"
-              >
-                <Image
-                  src="/images/logo-ehs-monogram.png"
-                  alt={SITE_CONFIG.legalName}
-                  width={44}
-                  height={44}
-                  className="object-contain brightness-[3] transition-transform duration-300 group-hover:scale-105"
-                />
-                <div className="flex flex-col">
-                  <span className="font-display text-lg font-bold leading-tight tracking-tight text-cream">
-                    Erlo, Haas & Steffens
-                  </span>
-                  <span className="font-display text-[11px] font-normal uppercase tracking-[0.25em] leading-none text-gold/85 mt-1">
-                    Sociedade de Advocacia
-                  </span>
-                </div>
-              </Link>
-              <p className="text-xs font-mono text-cream/70">
-                {SITE_CONFIG.oab} · CNPJ: {SITE_CONFIG.cnpj}
-              </p>
-            </div>
-
-            {/* Anchors */}
-            <div>
-              <h4 className="font-display text-sm font-bold uppercase tracking-[0.15em] text-gold mb-4">
-                Nesta página
-              </h4>
-              <nav
-                aria-label="Links do rodapé"
-                className="flex flex-col gap-2.5"
-              >
-                {navLinks.map((link) => (
-                  <a
-                    key={link.href}
-                    href={link.href}
-                    className="text-sm text-cream/80 hover:text-gold transition-colors no-underline"
-                  >
-                    {link.label}
-                  </a>
-                ))}
-              </nav>
-            </div>
-
-            {/* Contact */}
-            <div>
-              <h4 className="font-display text-sm font-bold uppercase tracking-[0.15em] text-gold mb-4">
-                Contato
-              </h4>
-              <div className="space-y-3 text-sm text-cream/80">
-                <div className="flex items-start gap-2.5">
-                  <MapPin className="h-4 w-4 mt-0.5 text-gold shrink-0" />
-                  <p className="leading-relaxed m-0">
-                    {SITE_CONFIG.address.street}
-                    <br />
-                    {SITE_CONFIG.address.building},{" "}
-                    {SITE_CONFIG.address.neighborhood}
-                    <br />
-                    {SITE_CONFIG.address.city} - {SITE_CONFIG.address.state}
-                  </p>
-                </div>
-                <a
-                  href={SITE_CONFIG.contact.phone}
-                  className="flex items-center gap-2.5 hover:text-gold transition-colors no-underline"
-                >
-                  <Phone className="h-4 w-4 text-gold shrink-0" />
-                  {SITE_CONFIG.contact.whatsappDisplay}
-                </a>
-                <a
-                  href={`mailto:${SITE_CONFIG.contact.email}`}
-                  className="flex items-center gap-2.5 hover:text-gold transition-colors no-underline"
-                >
-                  <Mail className="h-4 w-4 text-gold shrink-0" />
-                  {SITE_CONFIG.contact.email}
-                </a>
-              </div>
-            </div>
-
-            {/* Institutional Links */}
-            <div>
-              <h4 className="font-display text-sm font-bold uppercase tracking-[0.15em] text-gold mb-4">
-                Institucional
-              </h4>
-              <div className="flex flex-col gap-2.5 text-sm text-cream/80">
-                <Link
-                  href="/"
-                  className="inline-flex items-center gap-1.5 hover:text-gold transition-colors no-underline"
-                >
-                  Site institucional
-                  <ArrowUpRight className="h-3.5 w-3.5" />
-                </Link>
-                <a
-                  href={SITE_CONFIG.social.instagram}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 hover:text-gold transition-colors no-underline"
-                >
-                  Instagram do escritório
-                  <ArrowUpRight className="h-3.5 w-3.5" />
-                </a>
-                <Link
-                  href="/politica-de-privacidade"
-                  className="hover:text-gold transition-colors no-underline"
-                >
-                  Política de Privacidade
-                </Link>
-                <Link
-                  href="/termos-de-uso"
-                  className="hover:text-gold transition-colors no-underline"
-                >
-                  Termos de Uso
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-forest-600/60 py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs text-cream/65">
-            <p className="m-0 max-w-2xl leading-relaxed">
-              Conteúdo informativo. A análise jurídica depende das
-              circunstâncias de cada caso e não representa promessa de
-              resultado.
-            </p>
-            <p className="m-0 shrink-0">
-              © {new Date().getFullYear()} {SITE_CONFIG.legalName}. Todos os
-              direitos reservados.
-            </p>
-          </div>
-        </Container>
-      </footer>
+      <LandingFooter navLinks={navLinks} />
 
       {/* ── Floating WhatsApp (alinhado ao componente oficial, z-40) ── */}
       <WhatsAppLink

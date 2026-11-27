@@ -21,7 +21,7 @@ import { PostViewTracker } from "@/components/blog/post-view-tracker";
 import { ReadingProgress } from "@/components/blog/reading-progress";
 import { TableOfContents } from "@/components/blog/table-of-contents";
 import { ShareButtons } from "@/components/blog/share-buttons";
-import { BlogContextualCta } from "@/components/blog/contextual-cta";
+import { BlogContextualCta, BlogSidebarCta } from "@/components/blog/contextual-cta";
 import { ArticleImageLightbox } from "@/components/blog/article-image-lightbox";
 import { processBlogHtmlWithToc } from "@/lib/sanitize-blog-html";
 import { SITE_CONFIG, TEAM_IMAGES } from "@/lib/site-config";
@@ -53,6 +53,31 @@ function formatShortDate(dateStr: string): string {
   });
 }
 
+function getBadgeTextColorClass(
+  hex: string | null | undefined
+): "text-ink" | "text-cream" {
+  if (!hex) return "text-ink";
+  const cleaned = hex.trim().replace(/^#/, "");
+  const normalized =
+    cleaned.length === 3
+      ? cleaned
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : cleaned;
+  if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
+    return "text-ink";
+  }
+  const r = Number.parseInt(normalized.slice(0, 2), 16) / 255;
+  const g = Number.parseInt(normalized.slice(2, 4), 16) / 255;
+  const b = Number.parseInt(normalized.slice(4, 6), 16) / 255;
+  const toLinear = (c: number) =>
+    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  const luminance =
+    0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+  return luminance > 0.35 ? "text-ink" : "text-cream";
+}
+
 export async function generateStaticParams() {
   const slugs = await getPublishedBlogSlugs();
   return slugs.map((slug) => ({ slug }));
@@ -72,6 +97,8 @@ export async function generateMetadata({
   const description =
     post.excerpt ?? `Artigo do Blog Jurídico da ${SITE_CONFIG.legalName}.`;
   const postUrl = `${SITE_CONFIG.url}/blog/${post.slug}`;
+  const author = post.authors as BlogAuthorSummary | null;
+  const category = post.categories as BlogCategorySummary | null;
 
   return {
     title,
@@ -86,6 +113,12 @@ export async function generateMetadata({
       locale: "pt_BR",
       siteName: SITE_CONFIG.legalName,
       url: postUrl,
+      ...(post.published_at && { publishedTime: post.published_at }),
+      ...((post.updated_at || post.published_at) && {
+        modifiedTime: post.updated_at ?? post.published_at ?? undefined,
+      }),
+      authors: [author?.full_name ?? SITE_CONFIG.legalName],
+      ...(category?.name && { section: category.name }),
       ...(post.cover_image_url && {
         images: [
           {
@@ -146,6 +179,11 @@ export default async function ArticlePage({ params }: PageProps) {
   const articleSchema = {
     "@context": "https://schema.org",
     "@type": "Article",
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": postUrl,
+    },
+    inLanguage: "pt-BR",
     headline: post.title,
     description:
       post.excerpt ?? `Artigo do Blog Jurídico da ${SITE_CONFIG.legalName}.`,
@@ -157,10 +195,14 @@ export default async function ArticlePage({ params }: PageProps) {
       "@type": "Organization",
       name: SITE_CONFIG.legalName,
       url: SITE_CONFIG.url,
+      logo: {
+        "@type": "ImageObject",
+        url: `${SITE_CONFIG.url}/images/logo-ehs-monogram.png`,
+      },
     },
     datePublished: post.published_at,
     dateModified: post.updated_at ?? post.published_at,
-    ...(post.cover_image_url && { image: post.cover_image_url }),
+    image: post.cover_image_url || `${postUrl}/opengraph-image`,
     url: postUrl,
   };
 
@@ -261,7 +303,9 @@ export default async function ArticlePage({ params }: PageProps) {
 
               {categoryName && (
                 <span
-                  className="inline-flex items-center px-3.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-[0.12em] text-ink shadow-xs"
+                  className={`inline-flex items-center px-3.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-[0.12em] shadow-xs ${getBadgeTextColorClass(
+                    categoryColor
+                  )}`}
                   style={{ backgroundColor: categoryColor }}
                 >
                   {categoryName}
@@ -386,13 +430,13 @@ export default async function ArticlePage({ params }: PageProps) {
 
               <div className="hidden lg:block sticky top-28 space-y-5">
                 <TableOfContents headings={headings} variant="desktop" />
-                <div className="rounded-2xl bg-white/80 border border-forest-600/12 p-5 backdrop-blur-xs">
-                  <ShareButtons
-                    postId={post.id}
-                    title={post.title}
-                    url={postUrl}
-                  />
-                </div>
+                <BlogSidebarCta
+                  postId={post.id}
+                  postTitle={post.title}
+                  postSlug={post.slug}
+                  categorySlug={categorySlug}
+                  categoryName={categoryName}
+                />
               </div>
             </div>
           ) : (
@@ -462,9 +506,18 @@ export default async function ArticlePage({ params }: PageProps) {
         </Container>
       </section>
 
+      {/* Contextual CTA */}
+      <BlogContextualCta
+        postId={post.id}
+        postTitle={post.title}
+        postSlug={post.slug}
+        categorySlug={categorySlug}
+        categoryName={categoryName}
+      />
+
       {/* Related posts */}
       {relatedPosts.length > 0 && (
-        <section className="pb-20 bg-cream">
+        <section className="pt-16 pb-20 bg-cream">
           <Container>
             <div className="max-w-5xl mx-auto">
               <div className="flex items-center justify-between mb-8">
@@ -511,7 +564,9 @@ export default async function ArticlePage({ params }: PageProps) {
                       {related.categories?.name && (
                         <div className="absolute top-3 left-3 z-10">
                           <span
-                            className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold text-ink"
+                            className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${getBadgeTextColorClass(
+                              related.categories.color_hex ?? "#E8D49A"
+                            )}`}
                             style={{
                               backgroundColor:
                                 related.categories.color_hex ?? "#E8D49A",
@@ -551,15 +606,6 @@ export default async function ArticlePage({ params }: PageProps) {
           </Container>
         </section>
       )}
-
-      {/* Contextual CTA */}
-      <BlogContextualCta
-        postId={post.id}
-        postTitle={post.title}
-        postSlug={post.slug}
-        categorySlug={categorySlug}
-        categoryName={categoryName}
-      />
     </div>
   );
 }

@@ -1,14 +1,25 @@
 import type { Metadata } from "next";
-import { JsonLd } from "@/components/seo/JsonLd";
+import { Mulish, Unna } from "next/font/google";
 import { SITE_CONFIG } from "@/lib/site-config";
-import "@fontsource/unna/400.css";
-import "@fontsource/unna/700.css";
-import "@fontsource/mulish/300.css";
-import "@fontsource/mulish/400.css";
-import "@fontsource/mulish/500.css";
-import "@fontsource/mulish/600.css";
-import "@fontsource/mulish/700.css";
 import "./globals.css";
+
+const unna = Unna({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  display: "swap",
+  variable: "--font-unna",
+});
+
+const mulish = Mulish({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-mulish",
+});
+
+const fbDomainVerification =
+  process.env.NEXT_PUBLIC_FB_DOMAIN_VERIFICATION ||
+  "kxbgdskgibhycq5k5kytetkuvyuf3t";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_CONFIG.url),
@@ -73,6 +84,11 @@ export const metadata: Metadata = {
     description: "Escritório de advocacia em São Miguel do Oeste - SC.",
     images: ["/og-image.png"],
   },
+  alternates: {
+    types: {
+      "application/rss+xml": "/blog/feed.xml",
+    },
+  },
 };
 
 export default function RootLayout({
@@ -81,13 +97,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={`${unna.variable} ${mulish.variable}`}>
       <head>
         <meta
           name="facebook-domain-verification"
-          content="kxbgdskgibhycq5k5kytetkuvyuf3t"
+          content={fbDomainVerification}
         />
-        <JsonLd />
       </head>
       <body className="antialiased grain-overlay">{children}</body>
     </html>

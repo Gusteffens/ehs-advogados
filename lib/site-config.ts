@@ -22,6 +22,8 @@ export interface TeamMemberConfig {
   image: string;
   deskImage: string;
   specialties: readonly string[];
+  bio: string;
+  credentials: readonly string[];
   gradient: string;
 }
 
@@ -30,6 +32,7 @@ const siteUrl = (
 ).replace(/\/+$/, "");
 
 const whatsappNumber = "5549984001053";
+const secondaryPhoneNumber = "5549988486988";
 
 export const SITE_CONFIG = {
   url: siteUrl,
@@ -53,6 +56,9 @@ export const SITE_CONFIG = {
     whatsappWithText: `https://wa.me/${whatsappNumber}?text=Ol%C3%A1%2C%20gostaria%20de%20solicitar%20uma%20consulta%20jur%C3%ADdica.`,
     whatsappDisplay: "+55 (49) 98400-1053",
     phone: `tel:+${whatsappNumber}`,
+    secondaryPhone: `tel:+${secondaryPhoneNumber}`,
+    secondaryPhoneDisplay: "(49) 98848-6988",
+    officeHours: "Segunda a sexta, das 8h às 18h",
     email: "ehs.escritorio@gmail.com",
     instagram: "https://www.instagram.com/ehs.adv/",
     facebook: "https://www.facebook.com/ehs.adv",
@@ -77,7 +83,7 @@ export const SITE_CONFIG = {
         "Inventários e partilhas",
         "Mediação e resolução de conflitos",
       ],
-      gradient: "from-forest-800 to-forest-800",
+      gradient: "from-forest-700 to-forest-900",
     },
     {
       id: "penal",
@@ -111,7 +117,7 @@ export const SITE_CONFIG = {
         "Regularização fundiária e usucapião rural",
         "Litígios sobre posse, propriedade e atividade rural",
       ],
-      gradient: "from-champagne-600 to-champagne-600",
+      gradient: "from-champagne-500 to-champagne-700",
     },
     {
       id: "ambiental",
@@ -162,7 +168,7 @@ export const SITE_CONFIG = {
         "Due diligence jurídica",
         "Planejamento sucessório empresarial",
       ],
-      gradient: "from-forest-800 to-forest-950",
+      gradient: "from-forest-700 to-forest-950",
     },
   ] as readonly PracticeAreaConfig[],
   team: [
@@ -175,6 +181,11 @@ export const SITE_CONFIG = {
       image: "/images/team/alessandra-steffens.webp",
       deskImage: "/images/team/alessandra-mesa.jpg",
       specialties: ["Direito Criminal"],
+      bio: "Atuação técnica e estratégica em Direito Penal, com foco em defesa em inquéritos, processos criminais, Tribunal do Júri e garantias fundamentais.",
+      credentials: [
+        "Inscrição ativa em SC e RS",
+        "Defesa criminal e Tribunal do Júri",
+      ],
       gradient: "from-champagne-400 to-champagne-600",
     },
     {
@@ -185,8 +196,17 @@ export const SITE_CONFIG = {
       email: "luiza@erlohaas.com.br",
       image: "/images/team/luiza-haas.webp",
       deskImage: "/images/team/luiza-mesa.jpeg",
-      specialties: ["Direito Civil", "Direito do Agronegócio", "Direito Ambiental"],
-      gradient: "from-champagne-400 to-champagne-400",
+      specialties: [
+        "Direito Civil",
+        "Direito do Agronegócio",
+        "Direito Ambiental",
+      ],
+      bio: "Assessoria consultiva e contenciosa em demandas cíveis, contratos, sucessões, relações do agronegócio e regularização ambiental.",
+      credentials: [
+        "Contratos, família e sucessões",
+        "Consultivo e contencioso agroambiental",
+      ],
+      gradient: "from-champagne-400 to-champagne-700",
     },
     {
       slug: "maisa-christ",
@@ -197,6 +217,11 @@ export const SITE_CONFIG = {
       image: "/images/team/maisa-christ.webp",
       deskImage: "/images/team/maisa-mesa.jpg",
       specialties: ["Direito Civil"],
+      bio: "Atuação dedicada em Direito Civil, com foco em contratos, responsabilidade civil, direito de família, sucessões e prevenção de litígios.",
+      credentials: [
+        "Direito Civil e obrigações",
+        "Atendimento consultivo e judicial",
+      ],
       gradient: "from-forest-600 to-forest-800",
     },
     {
@@ -207,7 +232,16 @@ export const SITE_CONFIG = {
       email: "jacson@erlohaas.com.br",
       image: "/images/team/jacson-erlo.webp",
       deskImage: "/images/team/jacson-mesa.jpeg",
-      specialties: ["Direito do Agronegócio", "Direito Civil", "Direito Ambiental"],
+      specialties: [
+        "Direito do Agronegócio",
+        "Direito Civil",
+        "Direito Ambiental",
+      ],
+      bio: "Assessoria jurídica ao produtor rural e empresas do agronegócio em crédito rural, Proagro, renegociação de dívidas, contratos e questões ambientais.",
+      credentials: [
+        "Crédito rural, Proagro e seguro rural",
+        "Contencioso cível e agroambiental",
+      ],
       gradient: "from-forest-800 to-forest-950",
     },
     {
@@ -219,7 +253,12 @@ export const SITE_CONFIG = {
       image: "/images/team/jean-erlo.webp",
       deskImage: "/images/team/jean-mesa.jpeg",
       specialties: ["Direito do Agronegócio", "Direito Ambiental"],
-      gradient: "from-forest-800 to-forest-800",
+      bio: "Atuação especializada em Direito do Agronegócio e Ambiental, com foco em crédito rural, regularização fundiária, CAR/SICAR e defesa em autos de infração.",
+      credentials: [
+        "Inscrição ativa em SC e PR",
+        "Agronegócio e compliance ambiental",
+      ],
+      gradient: "from-forest-700 to-forest-950",
     },
   ] as readonly TeamMemberConfig[],
 } as const;

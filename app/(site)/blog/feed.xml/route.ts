@@ -1,5 +1,7 @@
-import { getPublishedBlogPosts } from "@/lib/data/blog";
+import { getLatestPublishedBlogPosts } from "@/lib/data/blog";
 import { SITE_CONFIG } from "@/lib/site-config";
+
+const MAX_FEED_ITEMS = 50;
 
 function escapeXml(value: string): string {
   return value
@@ -10,8 +12,22 @@ function escapeXml(value: string): string {
     .replace(/'/g, "&apos;");
 }
 
+function inferImageMimeType(url: string): string {
+  const cleanUrl = url.split("?")[0].toLowerCase();
+  if (cleanUrl.endsWith(".png")) return "image/png";
+  if (cleanUrl.endsWith(".webp")) return "image/webp";
+  if (cleanUrl.endsWith(".avif")) return "image/avif";
+  if (cleanUrl.endsWith(".gif")) return "image/gif";
+  return "image/jpeg";
+}
+
+function resolveAbsoluteUrl(url: string, baseUrl: string): string {
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
 export async function GET() {
-  const posts = await getPublishedBlogPosts();
+  const posts = await getLatestPublishedBlogPosts(MAX_FEED_ITEMS);
   const baseUrl = SITE_CONFIG.url;
   const feedUrl = `${baseUrl}/blog/feed.xml`;
   const lastBuildDate = posts[0]?.published_at
@@ -25,8 +41,15 @@ export async function GET() {
       const description =
         post.excerpt?.trim() ||
         `Artigo jurídico publicado por ${SITE_CONFIG.legalName}.`;
+      const authorName = post.authors?.full_name?.trim() || SITE_CONFIG.legalName;
+      const authorEmail = `${SITE_CONFIG.contact.email} (${authorName})`;
       const categoryXml = post.categories?.name
         ? `\n      <category>${escapeXml(post.categories.name)}</category>`
+        : "";
+      const enclosureXml = post.cover_image_url
+        ? `\n      <enclosure url="${escapeXml(
+            resolveAbsoluteUrl(post.cover_image_url, baseUrl)
+          )}" length="0" type="${inferImageMimeType(post.cover_image_url)}" />`
         : "";
 
       return `    <item>
@@ -34,13 +57,15 @@ export async function GET() {
       <link>${escapeXml(postUrl)}</link>
       <guid isPermaLink="true">${escapeXml(postUrl)}</guid>
       <description>${escapeXml(description)}</description>
-      <pubDate>${pubDate}</pubDate>${categoryXml}
+      <pubDate>${pubDate}</pubDate>
+      <author>${escapeXml(authorEmail)}</author>
+      <dc:creator>${escapeXml(authorName)}</dc:creator>${categoryXml}${enclosureXml}
     </item>`;
     })
     .join("\n");
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>${escapeXml(`Blog Jurídico | ${SITE_CONFIG.legalName}`)}</title>
     <link>${escapeXml(`${baseUrl}/blog`)}</link>

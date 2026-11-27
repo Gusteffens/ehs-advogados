@@ -7,21 +7,47 @@ import { Container } from "@/components/ui/container";
 import { CategoryFilter } from "@/components/blog/category-filter";
 import { BlogSearch } from "@/components/blog/blog-search";
 import { getBlogCategories, getPublishedBlogPosts } from "@/lib/data/blog";
-import { TEAM_IMAGES } from "@/lib/site-config";
+import { SITE_CONFIG, TEAM_IMAGES } from "@/lib/site-config";
 import type { BlogPostSummary } from "@/types/blog";
-
-export const metadata: Metadata = {
-  title: "Blog Jurídico",
-  description:
-    "Artigos e análises jurídicas sobre Direito Civil, Agronegócio, Ambiental e Penal pelos advogados da Erlo, Haas & Steffens.",
-  alternates: {
-    canonical: "/blog",
-  },
-};
 
 export const revalidate = 300;
 
 const POSTS_PER_PAGE = 9;
+const BLOG_DESCRIPTION =
+  "Artigos e análises jurídicas sobre Direito Civil, Agronegócio, Ambiental e Penal pelos advogados da Erlo, Haas & Steffens.";
+
+function normalizeSearchText(value: string | null | undefined): string {
+  if (!value) return "";
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function getBadgeTextColorClass(
+  hex: string | null | undefined
+): "text-ink" | "text-cream" {
+  if (!hex) return "text-ink";
+  const cleaned = hex.trim().replace(/^#/, "");
+  const normalized =
+    cleaned.length === 3
+      ? cleaned
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : cleaned;
+  if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
+    return "text-ink";
+  }
+  const r = Number.parseInt(normalized.slice(0, 2), 16) / 255;
+  const g = Number.parseInt(normalized.slice(2, 4), 16) / 255;
+  const b = Number.parseInt(normalized.slice(4, 6), 16) / 255;
+  const toLinear = (c: number) =>
+    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  const luminance =
+    0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+  return luminance > 0.35 ? "text-ink" : "text-cream";
+}
 
 function formatPostDate(
   dateStr: string,
@@ -44,6 +70,61 @@ function buildBlogPageHref(
   if (page > 1) params.set("pagina", String(page));
   const qs = params.toString();
   return qs ? `/blog?${qs}` : "/blog";
+}
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}): Promise<Metadata> {
+  const resolvedParams = await searchParams;
+  const categoria =
+    typeof resolvedParams?.categoria === "string"
+      ? resolvedParams.categoria
+      : undefined;
+  const searchQuery =
+    typeof resolvedParams?.q === "string"
+      ? resolvedParams.q.trim()
+      : undefined;
+  const rawPage =
+    typeof resolvedParams?.pagina === "string"
+      ? Number.parseInt(resolvedParams.pagina, 10)
+      : 1;
+  const page = Number.isFinite(rawPage) && rawPage > 1 ? rawPage : 1;
+
+  const title =
+    page > 1 ? `Blog Jurídico — Página ${page}` : "Blog Jurídico";
+  const canonicalPath = searchQuery
+    ? "/blog"
+    : buildBlogPageHref(page, categoria);
+  const fullUrl = `${SITE_CONFIG.url}${canonicalPath}`;
+
+  return {
+    title,
+    description: BLOG_DESCRIPTION,
+    alternates: {
+      canonical: canonicalPath,
+    },
+    ...(searchQuery && {
+      robots: {
+        index: false,
+        follow: true,
+      },
+    }),
+    openGraph: {
+      title,
+      description: BLOG_DESCRIPTION,
+      type: "website",
+      locale: "pt_BR",
+      siteName: SITE_CONFIG.legalName,
+      url: fullUrl,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: BLOG_DESCRIPTION,
+    },
+  };
 }
 
 export default async function BlogPage({
@@ -77,11 +158,13 @@ export default async function BlogPage({
   }
 
   if (searchQuery) {
-    const q = searchQuery.toLowerCase();
+    const q = normalizeSearchText(searchQuery);
     safePosts = safePosts.filter(
       (post) =>
-        post.title.toLowerCase().includes(q) ||
-        post.excerpt?.toLowerCase().includes(q)
+        normalizeSearchText(post.title).includes(q) ||
+        normalizeSearchText(post.excerpt).includes(q) ||
+        normalizeSearchText(post.categories?.name).includes(q) ||
+        normalizeSearchText(post.authors?.full_name).includes(q)
     );
   }
 
@@ -132,7 +215,7 @@ export default async function BlogPage({
         </Container>
       </section>
 
-      <section className="py-6 bg-cream sticky top-16 z-20">
+      <section className="py-5 bg-cream/95 backdrop-blur-md border-b border-forest-600/12 sticky top-[68px] z-20">
         <Container>
           <div className="flex flex-col gap-4">
             <Suspense fallback={<div className="h-10" />}>
@@ -291,7 +374,9 @@ export default async function BlogPage({
                         {post.categories?.name && (
                           <div className="absolute top-3 left-3 z-10">
                             <span
-                              className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold text-ink"
+                              className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${getBadgeTextColorClass(
+                                post.categories.color_hex ?? "#E8D49A"
+                              )}`}
                               style={{
                                 backgroundColor:
                                   post.categories.color_hex ?? "#E8D49A",

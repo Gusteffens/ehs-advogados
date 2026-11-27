@@ -1,30 +1,36 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import {
   ArrowRight,
   ArrowUpRight,
-  ChevronDown,
   FileCheck2,
   FileText,
   FolderSearch,
   Instagram,
   Mail,
   MapPin,
-  Menu,
   MessageCircle,
   Phone,
   Play,
   ShieldCheck,
-  X,
 } from "lucide-react";
 import { Container } from "@/components/ui/container";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { WhatsAppLink } from "@/components/tracking/whatsapp-link";
+import {
+  LandingHeader,
+  type LandingNavLink,
+} from "@/components/landing/landing-header";
+import { LandingFooter } from "@/components/landing/landing-footer";
+import {
+  FaqAccordion,
+  type FaqAccordionItem,
+} from "@/components/landing/faq-accordion";
+import { LandingLeadForm } from "@/components/landing/landing-lead-form";
 import { SITE_CONFIG } from "@/lib/site-config";
-import { getConsentState, trackWhatsAppClick } from "@/lib/tracking";
+import { getConsentState } from "@/lib/tracking";
 import { cn } from "@/lib/utils";
 import "./proagro.css";
 
@@ -34,16 +40,25 @@ const defaultWhatsappUrl = `${SITE_CONFIG.contact.whatsapp}?text=${encodeURIComp
   defaultMessage
 )}`;
 
-const navLinks = [
+const navLinks: readonly LandingNavLink[] = [
   { href: "#documentos", label: "Documentos" },
   { href: "#como-funciona", label: "Como funciona" },
   { href: "#equipe", label: "Equipe" },
   { href: "#conteudos", label: "Conteúdos" },
   { href: "#duvidas", label: "Dúvidas" },
   { href: "#contato", label: "Contato" },
-] as const;
+];
 
 const heroSignals = ["Negativa", "Redução", "Glosa", "Encerramento"] as const;
+
+const proagroStatusOptions = [
+  "Negado",
+  "Reduzido",
+  "Glosado",
+  "Encerrado",
+  "Em análise",
+  "Não sei informar",
+] as const;
 
 const documentItems = [
   {
@@ -118,44 +133,12 @@ const instagramCarousels = [
   },
 ] as const;
 
-const faqItems = [
-  {
-    id: 1,
-    question: "A análise garante indenização?",
-    answer:
-      "Não. Ela serve para avaliar a viabilidade técnica do caso, a documentação disponível e os possíveis caminhos, sem promessa de resultado.",
-  },
-  {
-    id: 2,
-    question: "Posso chamar mesmo sem todos os documentos?",
-    answer:
-      "Sim. O escritório pode orientar quais documentos procurar e avaliar a solicitação junto ao banco, cooperativa ou agente financeiro, conforme o caso.",
-  },
-  {
-    id: 3,
-    question: "Atende produtor de outra cidade?",
-    answer:
-      "Sim. O atendimento pode ser presencial em nossa sede em São Miguel do Oeste/SC ou digital, conforme a necessidade do produtor rural.",
-  },
-] as const;
+interface ProagroPageContentProps {
+  faqs: readonly FaqAccordionItem[];
+}
 
-export default function ProagroPageContent() {
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [openFaq, setOpenFaq] = useState<number | null>(1);
+export default function ProagroPageContent({ faqs }: ProagroPageContentProps) {
   const [bannerVisible, setBannerVisible] = useState(false);
-  const [formStatus, setFormStatus] = useState(
-    "Os dados não são armazenados nesta página. Ao enviar, o WhatsApp será aberto com a mensagem preenchida."
-  );
-
-  const contactFormRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   useEffect(() => {
     const syncConsent = () => {
@@ -166,230 +149,22 @@ export default function ProagroPageContent() {
     return () => window.removeEventListener("ehs:consent-change", syncConsent);
   }, []);
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setMenuOpen(false);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [menuOpen]);
-
-  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!contactFormRef.current) return;
-
-    const formData = new FormData(contactFormRef.current);
-    const name = formData.get("name")?.toString().trim() || "Não informado";
-    const status = formData.get("status")?.toString().trim() || "Não informado";
-    const message =
-      formData.get("message")?.toString().trim() || "Não informado";
-
-    const text = [
-      "Olá, gostaria de solicitar análise de um caso de Proagro.",
-      "",
-      `Nome: ${name}`,
-      `Situação do Proagro: ${status}`,
-      `Resumo do problema: ${message}`,
-    ].join("\n");
-
-    trackWhatsAppClick({
-      page: "/proagro",
-      placement: "proagro-whatsapp-form",
-      label: `Formulário Proagro (${status})`,
-    });
-
-    setFormStatus("Abrindo o WhatsApp com a mensagem preenchida.");
-    window.open(
-      `${SITE_CONFIG.contact.whatsapp}?text=${encodeURIComponent(text)}`,
-      "_blank",
-      "noopener,noreferrer"
-    );
-  };
-
-  const closeMenu = () => setMenuOpen(false);
-
   return (
-    <div className="landing-proagro min-h-screen bg-cream text-ink">
+    <div className="landing-proagro min-h-screen bg-cream text-ink" id="topo">
       <a className="skip-link" href="#conteudo">
         Pular para o conteúdo
       </a>
 
-      {/* ── Standalone LP Header (aligned with main site Header) ── */}
-      <header
-        id="topo"
-        className={cn(
-          "fixed top-0 left-0 right-0 z-50 transition-all duration-500",
-          scrolled
-            ? "bg-cream/95 backdrop-blur-xl shadow-md shadow-forest-900/5 py-3"
-            : "bg-ink/40 backdrop-blur-md border-b border-cream/10 py-4"
-        )}
-      >
-        <Container>
-          <nav
-            className="flex items-center justify-between gap-4"
-            aria-label="Navegação principal"
-          >
-            <a
-              href="#inicio"
-              className="group flex items-center gap-3 no-underline shrink-0"
-              aria-label={`${SITE_CONFIG.legalName} — início`}
-            >
-              <div className="relative flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden transition-transform duration-300 group-hover:scale-105">
-                <Image
-                  src="/images/logo-ehs-monogram.png"
-                  alt={SITE_CONFIG.shortName}
-                  width={40}
-                  height={40}
-                  className={cn(
-                    "object-contain transition-all duration-500",
-                    scrolled ? "brightness-0" : "brightness-100"
-                  )}
-                  priority
-                />
-              </div>
-              <div className="flex flex-col">
-                <span
-                  className={cn(
-                    "font-display text-base sm:text-lg font-bold leading-tight tracking-tight transition-colors duration-500",
-                    scrolled ? "text-ink" : "text-cream"
-                  )}
-                >
-                  Erlo, Haas & Steffens
-                </span>
-                <span
-                  className={cn(
-                    "hidden sm:block font-body text-[10px] font-semibold uppercase tracking-[0.2em] leading-none mt-1 transition-colors duration-500",
-                    scrolled ? "text-gold-dark" : "text-gold/85"
-                  )}
-                >
-                  Sociedade de Advocacia
-                </span>
-              </div>
-            </a>
-
-            {/* Desktop Links */}
-            <div className="hidden lg:flex items-center gap-1">
-              {navLinks.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "px-3.5 py-2 text-sm font-medium rounded-lg transition-colors duration-300 no-underline",
-                    scrolled
-                      ? "text-forest-600 hover:text-ink hover:bg-forest-50"
-                      : "text-cream/80 hover:text-cream hover:bg-cream/10"
-                  )}
-                >
-                  {link.label}
-                </a>
-              ))}
-            </div>
-
-            {/* Desktop CTA */}
-            <div className="hidden lg:flex items-center">
-              <WhatsAppLink
-                href={defaultWhatsappUrl}
-                page="/proagro"
-                placement="header-cta"
-                label="Header Proagro"
-                className="no-underline"
-              >
-                <Button variant="secondary" size="sm">
-                  <MessageCircle className="h-4 w-4" />
-                  Falar pelo WhatsApp
-                </Button>
-              </WhatsAppLink>
-            </div>
-
-            {/* Mobile Menu Button */}
-            <button
-              type="button"
-              onClick={() => setMenuOpen((prev) => !prev)}
-              className={cn(
-                "lg:hidden relative z-50 flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
-                menuOpen || scrolled
-                  ? "text-ink hover:bg-forest-100"
-                  : "text-cream hover:bg-cream/10"
-              )}
-              aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
-              aria-expanded={menuOpen}
-              aria-controls="proagro-mobile-drawer"
-            >
-              {menuOpen ? (
-                <X className="h-5 w-5" />
-              ) : (
-                <Menu className="h-5 w-5" />
-              )}
-            </button>
-          </nav>
-        </Container>
-
-        {/* Mobile Drawer */}
-        {menuOpen && (
-          <>
-            <div
-              className="fixed inset-0 bg-ink/60 lg:hidden"
-              onClick={closeMenu}
-              aria-hidden="true"
-            />
-            <div
-              id="proagro-mobile-drawer"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Menu de navegação"
-              className="fixed top-0 right-0 bottom-0 w-[85%] max-w-sm bg-cream shadow-2xl lg:hidden"
-            >
-              <div className="flex flex-col h-full pt-24 px-8 pb-8">
-                <div className="flex flex-col gap-1">
-                  {navLinks.map((link) => (
-                    <a
-                      key={link.href}
-                      href={link.href}
-                      onClick={closeMenu}
-                      className="block px-4 py-3 text-lg font-medium text-ink rounded-xl hover:bg-forest-100 transition-colors no-underline"
-                    >
-                      {link.label}
-                    </a>
-                  ))}
-                </div>
-
-                <div className="mt-auto space-y-4">
-                  <div className="h-px bg-forest-600/20" />
-                  <WhatsAppLink
-                    href={defaultWhatsappUrl}
-                    page="/proagro"
-                    placement="mobile-menu-cta"
-                    label="Menu Mobile Proagro"
-                    onClick={closeMenu}
-                    className="block no-underline"
-                  >
-                    <Button variant="secondary" size="md" className="w-full">
-                      <MessageCircle className="h-4 w-4" />
-                      Falar pelo WhatsApp
-                    </Button>
-                  </WhatsAppLink>
-                  <Link
-                    href="/"
-                    onClick={closeMenu}
-                    className="block text-center text-sm font-semibold text-forest-600 hover:text-ink transition-colors no-underline"
-                  >
-                    Ir para o site institucional ↗
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </header>
+      <LandingHeader
+        subtitle="Sociedade de Advocacia"
+        navLinks={navLinks}
+        topHref="#inicio"
+        whatsappUrl={defaultWhatsappUrl}
+        page="/proagro"
+        ctaLabel="Falar pelo WhatsApp"
+        showCtaIcon
+        drawerId="proagro-mobile-drawer"
+      />
 
       <main id="conteudo">
         {/* ── Hero Section ── */}
@@ -449,26 +224,23 @@ export default function ProagroPageContent() {
                     page="/proagro"
                     placement="hero-primary"
                     label="Hero Proagro"
-                    className="no-underline"
+                    className={cn(
+                      buttonVariants({ variant: "secondary", size: "lg" }),
+                      "w-full sm:w-auto group text-base no-underline"
+                    )}
                   >
-                    <Button
-                      variant="secondary"
-                      size="lg"
-                      className="w-full sm:w-auto group text-base"
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                      Falar pelo WhatsApp
-                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                    </Button>
+                    <MessageCircle className="h-4 w-4" />
+                    Falar pelo WhatsApp
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </WhatsAppLink>
-                  <a href="#contato" className="no-underline">
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="w-full sm:w-auto border-cream/30 text-cream hover:bg-cream/10 hover:text-cream text-base"
-                    >
-                      Enviar resumo do caso
-                    </Button>
+                  <a
+                    href="#contato"
+                    className={cn(
+                      buttonVariants({ variant: "outline", size: "lg" }),
+                      "w-full sm:w-auto border-cream/30 text-cream hover:bg-cream/10 hover:text-cream text-base no-underline"
+                    )}
+                  >
+                    Enviar resumo do caso
                   </a>
                 </div>
 
@@ -613,12 +385,13 @@ export default function ProagroPageContent() {
                   page="/proagro"
                   placement="documents-section"
                   label="Documentos Proagro"
-                  className="no-underline"
+                  className={cn(
+                    buttonVariants({ variant: "primary", size: "lg" }),
+                    "group no-underline"
+                  )}
                 >
-                  <Button variant="primary" size="lg" className="group">
-                    Tenho dúvidas sobre meus documentos
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </Button>
+                  Tenho dúvidas sobre meus documentos
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </WhatsAppLink>
               </div>
 
@@ -823,16 +596,14 @@ export default function ProagroPageContent() {
                 href={SITE_CONFIG.social.instagram}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="shrink-0 no-underline"
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "group shrink-0 border-gold-dark/40 text-gold-dark hover:bg-gold-dark hover:text-cream hover:border-gold-dark no-underline"
+                )}
               >
-                <Button
-                  variant="outline"
-                  className="group border-gold-dark/40 text-gold-dark hover:bg-gold-dark hover:text-cream hover:border-gold-dark"
-                >
-                  <Instagram className="h-4 w-4" />
-                  Seguir @ehs.adv
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </Button>
+                <Instagram className="h-4 w-4" />
+                Seguir @ehs.adv
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </a>
             </div>
 
@@ -906,50 +677,16 @@ export default function ProagroPageContent() {
                 </p>
               </div>
 
-              <div className="lg:col-span-7 space-y-4">
-                {faqItems.map((item) => {
-                  const isOpen = openFaq === item.id;
-                  return (
-                    <div
-                      key={item.id}
-                      className="rounded-2xl bg-white border border-forest-100 shadow-sm overflow-hidden"
-                    >
-                      <h3 className="m-0">
-                        <button
-                          type="button"
-                          id={`faq-btn-${item.id}`}
-                          aria-expanded={isOpen}
-                          aria-controls={`faq-${item.id}`}
-                          onClick={() =>
-                            setOpenFaq(isOpen ? null : item.id)
-                          }
-                          className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left font-display text-xl font-bold text-ink hover:text-forest-600 transition-colors cursor-pointer"
-                        >
-                          <span>{item.question}</span>
-                          <ChevronDown
-                            className={cn(
-                              "h-5 w-5 text-gold-dark shrink-0 transition-transform duration-200",
-                              isOpen && "rotate-180"
-                            )}
-                            aria-hidden="true"
-                          />
-                        </button>
-                      </h3>
-                      <div
-                        id={`faq-${item.id}`}
-                        role="region"
-                        aria-labelledby={`faq-btn-${item.id}`}
-                        hidden={!isOpen}
-                        className="px-6 pb-6 text-sm sm:text-base text-forest-600 leading-relaxed border-t border-forest-50 pt-4"
-                      >
-                        <p className="m-0">{item.answer}</p>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="lg:col-span-7 space-y-6">
+                <FaqAccordion
+                  items={faqs}
+                  defaultOpenIndex={0}
+                  allowMultiple={false}
+                  idPrefix="proagro-faq"
+                />
 
                 {/* Dark CTA Card inside FAQ */}
-                <div className="rounded-2xl bg-forest-900 text-cream p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-lg mt-6">
+                <div className="rounded-2xl bg-forest-900 text-cream p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-lg">
                   <div>
                     <strong className="block font-display text-2xl font-bold text-cream mb-1">
                       Ainda tem dúvidas?
@@ -963,15 +700,12 @@ export default function ProagroPageContent() {
                     page="/proagro"
                     placement="faq-cta"
                     label="FAQ Proagro"
-                    className="shrink-0 no-underline"
+                    className={cn(
+                      buttonVariants({ variant: "secondary", size: "md" }),
+                      "w-full sm:w-auto shrink-0 no-underline"
+                    )}
                   >
-                    <Button
-                      variant="secondary"
-                      size="md"
-                      className="w-full sm:w-auto"
-                    >
-                      Falar com a equipe
-                    </Button>
+                    Falar com a equipe
                   </WhatsAppLink>
                 </div>
               </div>
@@ -998,8 +732,8 @@ export default function ProagroPageContent() {
                   Envie um resumo do seu caso
                 </h2>
                 <p className="text-base text-forest-600 leading-relaxed mb-8">
-                  Use o formulário para montar uma mensagem simples para o
-                  WhatsApp. Os dados não são armazenados nesta página.
+                  Preencha o formulário para registrar sua solicitação com nossa
+                  equipe e abrir o WhatsApp com o resumo preenchido.
                 </p>
 
                 <div className="rounded-2xl bg-white border border-forest-100 p-6 shadow-sm space-y-3">
@@ -1015,7 +749,9 @@ export default function ProagroPageContent() {
                       className="flex items-center gap-2.5 hover:text-ink transition-colors no-underline"
                     >
                       <Phone className="h-4 w-4 text-gold-dark shrink-0" />
-                      <span>WhatsApp: {SITE_CONFIG.contact.whatsappDisplay}</span>
+                      <span>
+                        WhatsApp: {SITE_CONFIG.contact.whatsappDisplay}
+                      </span>
                     </a>
                     <a
                       href={`mailto:${SITE_CONFIG.contact.email}`}
@@ -1037,239 +773,31 @@ export default function ProagroPageContent() {
                 </div>
               </div>
 
-              <form
-                id="whatsapp-contact-form"
-                ref={contactFormRef}
-                onSubmit={handleFormSubmit}
-                className="lg:col-span-7 rounded-2xl bg-white border border-forest-100 p-6 sm:p-8 lg:p-10 shadow-lg shadow-forest-900/5 space-y-5"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div className="flex flex-col gap-2">
-                    <label
-                      htmlFor="contact-name"
-                      className="text-xs font-bold uppercase tracking-wider text-forest-900"
-                    >
-                      Nome completo
-                    </label>
-                    <input
-                      id="contact-name"
-                      name="name"
-                      type="text"
-                      autoComplete="name"
-                      required
-                      placeholder="Seu nome"
-                      className="w-full rounded-xl border border-forest-200 bg-cream-light/50 px-4 py-3 text-sm text-ink placeholder:text-forest-400 focus:border-gold-dark focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/40 transition-colors"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <label
-                      htmlFor="contact-status"
-                      className="text-xs font-bold uppercase tracking-wider text-forest-900"
-                    >
-                      Situação do Proagro
-                    </label>
-                    <select
-                      id="contact-status"
-                      name="status"
-                      className="w-full rounded-xl border border-forest-200 bg-cream-light/50 px-4 py-3 text-sm text-ink focus:border-gold-dark focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/40 transition-colors"
-                    >
-                      <option value="Negado">Negado</option>
-                      <option value="Reduzido">Reduzido</option>
-                      <option value="Glosado">Glosado</option>
-                      <option value="Encerrado">Encerrado</option>
-                      <option value="Em análise">Em análise</option>
-                      <option value="Não sei informar">Não sei informar</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label
-                    htmlFor="contact-message"
-                    className="text-xs font-bold uppercase tracking-wider text-forest-900"
-                  >
-                    Resumo do problema
-                  </label>
-                  <textarea
-                    id="contact-message"
-                    name="message"
-                    rows={5}
-                    required
-                    placeholder="Ex.: perdi a lavoura por seca, o Proagro foi negado e recebi uma decisão do banco."
-                    className="w-full rounded-xl border border-forest-200 bg-cream-light/50 px-4 py-3 text-sm text-ink placeholder:text-forest-400 focus:border-gold-dark focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/40 transition-colors resize-y"
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="lg"
-                  className="w-full group"
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  Enviar pelo WhatsApp
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </Button>
-
-                <p
-                  id="form-status"
-                  aria-live="polite"
-                  className="text-xs text-forest-600 leading-relaxed m-0"
-                >
-                  {formStatus}
-                </p>
-              </form>
+              <div className="lg:col-span-7">
+                <LandingLeadForm
+                  sourcePage="/proagro"
+                  defaultSubject="Negado"
+                  subjectLabel="Situação do Proagro"
+                  subjectOptions={proagroStatusOptions}
+                  nameLabel="Nome completo"
+                  namePlaceholder="Seu nome"
+                  phoneLabel="Telefone / WhatsApp"
+                  phonePlaceholder="(49) 99999-9999"
+                  showEmailField
+                  messageLabel="Resumo do problema"
+                  messagePlaceholder="Ex.: perdi a lavoura por seca, o Proagro foi negado e recebi uma decisão do banco."
+                  submitLabel="Enviar pelo WhatsApp"
+                  submitVariant="primary"
+                  trackingPlacement="proagro-whatsapp-form"
+                  trackingLabel="Formulário Proagro"
+                />
+              </div>
             </div>
           </Container>
         </section>
       </main>
 
-      {/* ── Footer (aligned with main site Footer) ── */}
-      <footer className="relative bg-forest-900 text-cream/85 overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-dark via-gold to-gold-dark" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gold/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
-
-        <Container className="relative">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8 py-14 lg:py-16">
-            {/* Brand */}
-            <div>
-              <Link
-                href="/"
-                className="group inline-flex items-center gap-3 no-underline mb-4"
-              >
-                <Image
-                  src="/images/logo-ehs-monogram.png"
-                  alt={SITE_CONFIG.legalName}
-                  width={44}
-                  height={44}
-                  className="object-contain brightness-[3] transition-transform duration-300 group-hover:scale-105"
-                />
-                <div className="flex flex-col">
-                  <span className="font-display text-lg font-bold leading-tight text-cream">
-                    Erlo, Haas & Steffens
-                  </span>
-                  <span className="font-body text-[10px] font-semibold uppercase tracking-[0.22em] text-gold/85 mt-0.5">
-                    Sociedade de Advocacia
-                  </span>
-                </div>
-              </Link>
-              <p className="text-xs font-mono text-cream/70 mt-3">
-                {SITE_CONFIG.oab} | CNPJ: {SITE_CONFIG.cnpj}
-              </p>
-            </div>
-
-            {/* Page Sections */}
-            <div>
-              <h4 className="font-display text-sm font-bold uppercase tracking-[0.15em] text-gold mb-4">
-                Nesta página
-              </h4>
-              <ul className="space-y-2.5 list-none p-0 m-0">
-                {navLinks.map((link) => (
-                  <li key={link.href}>
-                    <a
-                      href={link.href}
-                      className="text-sm text-cream/80 hover:text-gold transition-colors no-underline"
-                    >
-                      {link.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Contact */}
-            <div>
-              <h4 className="font-display text-sm font-bold uppercase tracking-[0.15em] text-gold mb-4">
-                Contato
-              </h4>
-              <div className="space-y-3 text-sm text-cream/80">
-                <div className="flex items-start gap-2.5">
-                  <MapPin className="h-4 w-4 mt-0.5 text-gold shrink-0" />
-                  <p className="m-0 leading-relaxed">
-                    {SITE_CONFIG.address.street}
-                    <br />
-                    {SITE_CONFIG.address.building},{" "}
-                    {SITE_CONFIG.address.neighborhood}
-                    <br />
-                    {SITE_CONFIG.address.city} - {SITE_CONFIG.address.state}
-                  </p>
-                </div>
-                <a
-                  href={SITE_CONFIG.contact.phone}
-                  className="flex items-center gap-2.5 text-cream/80 hover:text-gold transition-colors no-underline"
-                >
-                  <Phone className="h-4 w-4 text-gold shrink-0" />
-                  {SITE_CONFIG.contact.whatsappDisplay}
-                </a>
-                <a
-                  href={`mailto:${SITE_CONFIG.contact.email}`}
-                  className="flex items-center gap-2.5 text-cream/80 hover:text-gold transition-colors no-underline"
-                >
-                  <Mail className="h-4 w-4 text-gold shrink-0" />
-                  {SITE_CONFIG.contact.email}
-                </a>
-              </div>
-            </div>
-
-            {/* Institutional Links */}
-            <div>
-              <h4 className="font-display text-sm font-bold uppercase tracking-[0.15em] text-gold mb-4">
-                Institucional
-              </h4>
-              <ul className="space-y-2.5 list-none p-0 m-0 text-sm">
-                <li>
-                  <Link
-                    href="/"
-                    className="inline-flex items-center gap-1.5 text-cream/80 hover:text-gold transition-colors no-underline"
-                  >
-                    Site institucional
-                    <ArrowUpRight className="h-3.5 w-3.5" />
-                  </Link>
-                </li>
-                <li>
-                  <a
-                    href={SITE_CONFIG.social.instagram}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-cream/80 hover:text-gold transition-colors no-underline"
-                  >
-                    Instagram do escritório
-                    <ArrowUpRight className="h-3.5 w-3.5" />
-                  </a>
-                </li>
-                <li>
-                  <Link
-                    href="/politica-de-privacidade"
-                    className="text-cream/80 hover:text-gold transition-colors no-underline"
-                  >
-                    Política de Privacidade
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/termos-de-uso"
-                    className="text-cream/80 hover:text-gold transition-colors no-underline"
-                  >
-                    Termos de Uso
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-forest-600/60 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-cream/65">
-            <p className="m-0 max-w-2xl">
-              Conteúdo informativo. A análise jurídica depende das
-              circunstâncias de cada caso e não representa promessa de
-              resultado.
-            </p>
-            <p className="m-0 shrink-0">
-              © {new Date().getFullYear()} {SITE_CONFIG.legalName}.
-            </p>
-          </div>
-        </Container>
-      </footer>
+      <LandingFooter navLinks={navLinks} />
 
       {/* ── Floating WhatsApp (aligned with FloatingWhatsApp, respects CookieConsentBanner) ── */}
       <WhatsAppLink

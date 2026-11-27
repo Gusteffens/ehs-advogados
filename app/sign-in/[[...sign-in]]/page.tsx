@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -6,6 +7,11 @@ import { getAdminSession, isDevBootstrapActive } from "@/lib/auth";
 import { LoginForm } from "@/components/admin/login-form";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Acesso Restrito",
+  robots: { index: false, follow: false },
+};
 
 function resolveSafeAdminRedirect(raw: string | string[] | undefined): string {
   const candidate = Array.isArray(raw) ? raw[0] : raw;

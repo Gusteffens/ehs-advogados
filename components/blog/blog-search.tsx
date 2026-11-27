@@ -32,6 +32,7 @@ export function BlogSearch({ currentQuery }: BlogSearchProps) {
       } else {
         params.delete("q");
       }
+      params.delete("pagina");
 
       const qs = params.toString();
       const nextUrl = qs ? `/blog?${qs}` : "/blog";
