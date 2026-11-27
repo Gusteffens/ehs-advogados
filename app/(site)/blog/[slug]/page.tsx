@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -24,6 +24,7 @@ import { ShareButtons } from "@/components/blog/share-buttons";
 import { BlogContextualCta, BlogSidebarCta } from "@/components/blog/contextual-cta";
 import { ArticleImageLightbox } from "@/components/blog/article-image-lightbox";
 import { processBlogHtmlWithToc } from "@/lib/sanitize-blog-html";
+import { createPublicClient } from "@/lib/supabase/public";
 import { SITE_CONFIG, TEAM_IMAGES } from "@/lib/site-config";
 import type { BlogAuthorSummary, BlogCategorySummary } from "@/types/blog";
 
@@ -144,6 +145,28 @@ export default async function ArticlePage({ params }: PageProps) {
   const post = await getPublishedBlogPostBySlug(slug);
 
   if (!post) {
+    let redirectTarget: string | null = null;
+    try {
+      const supabase = createPublicClient();
+      if (supabase) {
+        const { data } = await supabase
+          .from("blog_redirects")
+          .select("new_slug")
+          .eq("old_slug", slug)
+          .maybeSingle();
+
+        if (data?.new_slug && data.new_slug !== slug) {
+          redirectTarget = data.new_slug;
+        }
+      }
+    } catch {
+      // Gracefully ignore when blog_redirects table does not exist yet
+    }
+
+    if (redirectTarget) {
+      permanentRedirect(`/blog/${redirectTarget}`);
+    }
+
     notFound();
   }
 

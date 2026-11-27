@@ -6,6 +6,7 @@ import {
   Calendar,
   Check,
   CheckCircle2,
+  ClipboardList,
   Compass,
   Copy,
   ExternalLink,
@@ -13,10 +14,12 @@ import {
   Mail,
   MessageCircle,
   Phone,
+  Save,
   Trash2,
   X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { updateLeadCrm } from "@/app/actions/admin-leads";
+import { cn, getErrorMessage } from "@/lib/utils";
 import { SITE_CONFIG } from "@/lib/site-config";
 import { useToast } from "@/components/admin/toast-provider";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
@@ -29,6 +32,7 @@ interface LeadDetailDrawerProps {
   isDeleting: boolean;
   onClose: () => void;
   onStatusChange: (leadId: string, status: LeadStatus) => Promise<void> | void;
+  onCrmSaved?: () => void;
   onDelete: (leadId: string) => Promise<boolean>;
 }
 
@@ -83,6 +87,7 @@ export function LeadDetailDrawer({
   isDeleting,
   onClose,
   onStatusChange,
+  onCrmSaved,
   onDelete,
 }: LeadDetailDrawerProps) {
   const { toast } = useToast();
@@ -90,6 +95,17 @@ export function LeadDetailDrawer({
   const [whatsappOpened, setWhatsappOpened] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const leadSyncKey = `${lead?.id ?? ""}|${lead?.assigned_to ?? ""}|${lead?.internal_notes ?? ""}`;
+  const [syncedKey, setSyncedKey] = useState(leadSyncKey);
+  const [assignedTo, setAssignedTo] = useState(lead?.assigned_to ?? "");
+  const [internalNotes, setInternalNotes] = useState(lead?.internal_notes ?? "");
+  const [isSavingCrm, setIsSavingCrm] = useState(false);
+
+  if (syncedKey !== leadSyncKey) {
+    setSyncedKey(leadSyncKey);
+    setAssignedTo(lead?.assigned_to ?? "");
+    setInternalNotes(lead?.internal_notes ?? "");
+  }
 
   useEffect(() => {
     if (!lead) return;
@@ -147,6 +163,41 @@ export function LeadDetailDrawer({
       onClose();
     } else {
       setDeleteError("Não foi possível excluir este lead. Tente novamente.");
+    }
+  };
+
+  const hasCrmChanges =
+    assignedTo !== (lead.assigned_to ?? "") ||
+    internalNotes !== (lead.internal_notes ?? "");
+
+  const teamNames = SITE_CONFIG.team.map((member) => member.name);
+  const hasCustomAssignee =
+    Boolean(assignedTo) && !teamNames.includes(assignedTo);
+
+  const handleSaveCrm = async () => {
+    if (isSavingCrm) return;
+    setIsSavingCrm(true);
+    try {
+      const res = await updateLeadCrm(lead.id, {
+        assigned_to: assignedTo.trim() || null,
+        internal_notes: internalNotes.trim() || null,
+      });
+      if (!res.ok) {
+        toast.error(
+          "Erro ao salvar triagem",
+          res.error ?? "Não foi possível salvar as anotações."
+        );
+        return;
+      }
+      toast.success(
+        "Triagem atualizada",
+        "Responsável e anotações internas salvos com sucesso."
+      );
+      onCrmSaved?.();
+    } catch (err: unknown) {
+      toast.error("Erro ao salvar triagem", getErrorMessage(err));
+    } finally {
+      setIsSavingCrm(false);
     }
   };
 
@@ -380,6 +431,88 @@ export function LeadDetailDrawer({
                   )}
                 </div>
               )}
+            </section>
+
+            {/* Triagem Interna (Mini-CRM) */}
+            <section className="rounded-2xl border border-forest-100 bg-white p-4 space-y-3.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <ClipboardList className="h-3.5 w-3.5 text-gold-dark" />
+                  <span className="text-[11px] font-semibold uppercase tracking-widest text-forest-600">
+                    Triagem Interna
+                  </span>
+                </div>
+                {hasCrmChanges && (
+                  <span className="text-[10px] font-medium text-amber-700">
+                    Alterações pendentes
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="lead-assigned-to"
+                  className="block text-[11px] font-semibold uppercase tracking-wider text-forest-600"
+                >
+                  Sócio / Advogado Responsável
+                </label>
+                <select
+                  id="lead-assigned-to"
+                  value={assignedTo}
+                  disabled={isSavingCrm}
+                  onChange={(e) => setAssignedTo(e.target.value)}
+                  className="w-full rounded-xl border border-forest-200/90 bg-cream-light px-3.5 py-2 text-xs font-medium text-ink focus:bg-white focus:outline-none focus:ring-2 focus:ring-champagne-500/40 focus:border-gold-dark transition-all disabled:opacity-60"
+                >
+                  <option value="">Sem responsável definido</option>
+                  {SITE_CONFIG.team.map((member) => (
+                    <option key={member.slug} value={member.name}>
+                      {member.name}
+                    </option>
+                  ))}
+                  {hasCustomAssignee && (
+                    <option value={assignedTo}>{assignedTo}</option>
+                  )}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="lead-internal-notes"
+                  className="block text-[11px] font-semibold uppercase tracking-wider text-forest-600"
+                >
+                  Anotações Internas
+                </label>
+                <textarea
+                  id="lead-internal-notes"
+                  rows={3}
+                  value={internalNotes}
+                  disabled={isSavingCrm}
+                  onChange={(e) => setInternalNotes(e.target.value)}
+                  placeholder="Registre detalhes da triagem, retorno combinado ou próximos passos..."
+                  className="w-full rounded-xl border border-forest-200/90 bg-cream-light px-3.5 py-2.5 text-xs text-ink placeholder:text-forest-500/70 focus:bg-white focus:outline-none focus:ring-2 focus:ring-champagne-500/40 focus:border-gold-dark transition-all leading-relaxed disabled:opacity-60"
+                />
+              </div>
+
+              <div className="flex items-center justify-end">
+                <button
+                  type="button"
+                  disabled={isSavingCrm || !hasCrmChanges}
+                  onClick={() => void handleSaveCrm()}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-3.5 py-2 text-xs font-semibold text-gold hover:bg-primary transition-colors disabled:opacity-45 disabled:cursor-default cursor-pointer shadow-xs"
+                >
+                  {isSavingCrm ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-3.5 w-3.5" />
+                      Salvar anotações
+                    </>
+                  )}
+                </button>
+              </div>
             </section>
 
             {/* Full Message */}

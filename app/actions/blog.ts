@@ -1,32 +1,20 @@
 "use server";
 
 import { revalidatePath, updateTag } from "next/cache";
-import { headers } from "next/headers";
 import slugify from "slugify";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { sanitizeBlogHtml } from "@/lib/sanitize-blog-html";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createPublicClient } from "@/lib/supabase/public";
-import { getBlogActionRatelimit, getViewRatelimit } from "@/lib/upstash";
+import { getBlogActionRatelimit } from "@/lib/upstash";
 import { calculateReadingTime } from "@/lib/utils";
 import type {
   BlogActionResult,
   BulkActionResult,
   CategoryActionResult,
   PostStatus,
-  UploadImageResult,
 } from "@/types/blog";
-import type { LeadStatus } from "@/types/database";
 
-const ALLOWED_IMAGE_MIME_TO_EXT: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/avif": "avif",
-};
-
-const MAX_IMAGE_BYTES = 15 * 1024 * 1024; // 15 MB
 const STORAGE_BUCKET = "blog-covers";
 
 const uuidSchema = z.string().uuid("Identificador inválido.");
@@ -105,8 +93,6 @@ const categoryIdSchema = z
   .trim()
   .min(1, "Categoria inválida.")
   .max(100);
-
-const leadStatusSchema = z.enum(["new", "contacted", "archived"]);
 
 async function checkBlogActionRatelimit(
   userId: string
@@ -250,6 +236,110 @@ async function cleanupUnusedCoverImages(
   }
 }
 
+function extractInlineContentImagePaths(
+  html: string | null | undefined
+): Set<string> {
+  const paths = new Set<string>();
+  if (!html) return paths;
+
+  const regex = new RegExp(
+    `/storage/v1/object/public/${STORAGE_BUCKET}/(content/[^"'\\s<>?]+)`,
+    "gi"
+  );
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(html)) !== null) {
+    const rawPath = match[1];
+    if (!rawPath) continue;
+    try {
+      paths.add(decodeURIComponent(rawPath));
+    } catch {
+      paths.add(rawPath);
+    }
+  }
+
+  return paths;
+}
+
+async function cleanupUnusedContentImages(
+  supabase: ReturnType<typeof createAdminClient>,
+  storagePaths: Iterable<string>
+): Promise<void> {
+  const uniquePaths = Array.from(new Set(storagePaths)).filter((p) =>
+    p.startsWith("content/")
+  );
+  if (uniquePaths.length === 0) return;
+
+  try {
+    const pathsToRemove: string[] = [];
+
+    for (const storagePath of uniquePaths) {
+      // Verify no remaining post still references this inline content image
+      const { count, error: countError } = await supabase
+        .from("posts")
+        .select("id", { count: "exact", head: true })
+        .ilike("content", `%/${STORAGE_BUCKET}/${storagePath}%`);
+
+      if (!countError && (count ?? 0) === 0) {
+        pathsToRemove.push(storagePath);
+      }
+    }
+
+    if (pathsToRemove.length > 0) {
+      const { error } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .remove(pathsToRemove);
+      if (error) {
+        console.warn("Storage inline image cleanup warning:", error.message);
+      }
+    }
+  } catch (error) {
+    console.warn("Best-effort inline image cleanup failed:", error);
+  }
+}
+
+async function recordSlugRedirectIfSupported(
+  supabase: ReturnType<typeof createAdminClient>,
+  oldSlug: string,
+  newSlug: string
+): Promise<void> {
+  if (!oldSlug || !newSlug || oldSlug === newSlug) return;
+
+  // blog_redirects table may not exist yet if migration 006 has not been applied
+  const untyped = supabase as unknown as {
+    from: (table: string) => {
+      upsert: (
+        row: Record<string, unknown>,
+        opts?: Record<string, unknown>
+      ) => Promise<{ error: { code?: string; message: string } | null }>;
+    };
+  };
+
+  try {
+    const { error } = await untyped.from("blog_redirects").upsert(
+      {
+        old_slug: oldSlug,
+        new_slug: newSlug,
+      },
+      { onConflict: "old_slug" }
+    );
+
+    if (error) {
+      const msg = error.message.toLowerCase();
+      if (
+        error.code === "42P01" ||
+        error.code === "PGRST205" ||
+        msg.includes("does not exist") ||
+        msg.includes("could not find the table")
+      ) {
+        return;
+      }
+      console.warn("Best-effort slug redirect upsert warning:", error.message);
+    }
+  } catch (error) {
+    console.warn("Best-effort slug redirect upsert failed:", error);
+  }
+}
+
 async function syncPostTagsIfSupported(
   supabase: ReturnType<typeof createAdminClient>,
   postId: string,
@@ -371,20 +461,20 @@ async function getUniquePostSlug(
 async function resolveAuthorId(
   supabase: ReturnType<typeof createAdminClient>,
   formAuthorId: string,
-  clerkUserId: string
+  sessionUserId: string
 ): Promise<string | null> {
   if (formAuthorId) {
     return formAuthorId;
   }
 
-  const { data: byClerk } = await supabase
+  const { data: bySession } = await supabase
     .from("authors")
     .select("id")
-    .eq("id", clerkUserId)
+    .eq("id", sessionUserId)
     .maybeSingle();
 
-  if (byClerk?.id) {
-    return byClerk.id;
+  if (bySession?.id) {
+    return bySession.id;
   }
 
   const { data: first } = await supabase
@@ -395,64 +485,6 @@ async function resolveAuthorId(
     .maybeSingle();
 
   return first?.id ?? null;
-}
-
-async function uploadBlogImage(
-  formData: FormData,
-  folder?: string
-): Promise<UploadImageResult> {
-  const { userId } = await requireAdmin();
-  const limitError = await checkBlogActionRatelimit(userId);
-  if (limitError) return { ok: false, error: limitError };
-
-  const file = formData.get("file");
-
-  if (!(file instanceof File)) {
-    return { ok: false, error: "Nenhum arquivo enviado." };
-  }
-
-  const ext = ALLOWED_IMAGE_MIME_TO_EXT[file.type];
-  if (!ext) {
-    return {
-      ok: false,
-      error: "Formato de imagem inválido. Utilize JPEG, PNG, WebP ou AVIF.",
-    };
-  }
-
-  if (file.size <= 0 || file.size > MAX_IMAGE_BYTES) {
-    return { ok: false, error: "A imagem deve ter no máximo 15 MB." };
-  }
-
-  const supabase = createAdminClient();
-  const baseName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
-  const filePath = folder ? `${folder}/${baseName}` : baseName;
-
-  const { error } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .upload(filePath, file, {
-      contentType: file.type,
-      upsert: false,
-    });
-
-  if (error) {
-    console.error("Failed to upload blog image:", error);
-    return { ok: false, error: "Não foi possível enviar a imagem." };
-  }
-
-  const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(filePath);
-  return { ok: true, url: data.publicUrl };
-}
-
-export async function uploadCoverImage(
-  formData: FormData
-): Promise<UploadImageResult> {
-  return uploadBlogImage(formData);
-}
-
-export async function uploadEditorImage(
-  formData: FormData
-): Promise<UploadImageResult> {
-  return uploadBlogImage(formData, "editor");
 }
 
 export async function createPost(
@@ -595,7 +627,7 @@ export async function updatePost(
     const supabase = createAdminClient();
     const { data: existingPost, error: existingError } = await supabase
       .from("posts")
-      .select("slug, published_at, cover_image_url")
+      .select("slug, status, published_at, cover_image_url, content")
       .eq("id", idParsed.data)
       .maybeSingle();
 
@@ -669,12 +701,31 @@ export async function updatePost(
       );
     }
 
+    // Record automatic 301 slug redirect when a published post changes its slug
+    if (existingPost.status === "published" && existingPost.slug !== nextSlug) {
+      await recordSlugRedirectIfSupported(supabase, existingPost.slug, nextSlug);
+    }
+
     // Best-effort cleanup of replaced/removed cover image
     if (
       existingPost.cover_image_url &&
       existingPost.cover_image_url !== nextCoverUrl
     ) {
       void cleanupUnusedCoverImages(supabase, [existingPost.cover_image_url]);
+    }
+
+    // Best-effort cleanup of removed inline content images
+    const previousContentImages = extractInlineContentImagePaths(
+      existingPost.content
+    );
+    if (previousContentImages.size > 0) {
+      const nextContentImages = extractInlineContentImagePaths(sanitizedContent);
+      const removedContentImages = Array.from(previousContentImages).filter(
+        (path) => !nextContentImages.has(path)
+      );
+      if (removedContentImages.length > 0) {
+        void cleanupUnusedContentImages(supabase, removedContentImages);
+      }
     }
 
     revalidatePublicBlog([existingPost.slug, nextSlug]);
@@ -871,7 +922,7 @@ export async function bulkDeletePosts(ids: string[]): Promise<BulkActionResult> 
   const supabase = createAdminClient();
   const { data: existingPosts } = await supabase
     .from("posts")
-    .select("slug, cover_image_url")
+    .select("slug, cover_image_url, content")
     .in("id", idsParsed.data);
 
   const { error } = await supabase
@@ -889,6 +940,12 @@ export async function bulkDeletePosts(ids: string[]): Promise<BulkActionResult> 
     supabase,
     rows.map((r) => r.cover_image_url)
   );
+  const removedContentImages = rows.flatMap((r) =>
+    Array.from(extractInlineContentImagePaths(r.content))
+  );
+  if (removedContentImages.length > 0) {
+    void cleanupUnusedContentImages(supabase, removedContentImages);
+  }
 
   revalidatePublicBlog(rows.map((p) => p.slug));
   revalidatePath("/admin");
@@ -910,7 +967,7 @@ export async function deletePost(id: string): Promise<BlogActionResult> {
   const supabase = createAdminClient();
   const { data: existingPost } = await supabase
     .from("posts")
-    .select("slug, cover_image_url")
+    .select("slug, cover_image_url, content")
     .eq("id", idParsed.data)
     .maybeSingle();
 
@@ -929,6 +986,12 @@ export async function deletePost(id: string): Promise<BlogActionResult> {
 
   if (existingPost?.cover_image_url) {
     void cleanupUnusedCoverImages(supabase, [existingPost.cover_image_url]);
+  }
+  const removedContentImages = extractInlineContentImagePaths(
+    existingPost?.content
+  );
+  if (removedContentImages.size > 0) {
+    void cleanupUnusedContentImages(supabase, removedContentImages);
   }
 
   revalidatePublicBlog([existingPost?.slug]);
@@ -1275,79 +1338,4 @@ export async function deleteCategory(
   revalidatePath("/admin/categorias");
   revalidatePath("/admin/posts");
   return { ok: true, id: parsedId.data };
-}
-
-export async function updateLeadStatus(
-  leadId: string,
-  status: LeadStatus
-): Promise<{ error?: string }> {
-  const { userId } = await requireAdmin();
-  const limitError = await checkBlogActionRatelimit(userId);
-  if (limitError) return { error: limitError };
-
-  const parsedId = uuidSchema.safeParse(leadId);
-  if (!parsedId.success) {
-    return { error: "Identificador do lead inválido." };
-  }
-
-  const parsedStatus = leadStatusSchema.safeParse(status);
-  if (!parsedStatus.success) {
-    return { error: "Status inválido." };
-  }
-
-  const supabase = createAdminClient();
-  const { error } = await supabase
-    .from("contact_leads")
-    .update({ status: parsedStatus.data })
-    .eq("id", parsedId.data);
-
-  if (error) {
-    console.error("Failed to update lead status:", error);
-    return { error: "Não foi possível atualizar o status do lead." };
-  }
-
-  revalidatePath("/admin/leads");
-  return {};
-}
-
-/**
- * @deprecated Retained as a safe compatibility wrapper for legacy callers.
- * New analytics tracking uses the dedicated /api/analytics endpoints.
- */
-export async function incrementViews(postId: string): Promise<void> {
-  const parsed = uuidSchema.safeParse(postId);
-  if (!parsed.success) {
-    return;
-  }
-
-  const ratelimit = getViewRatelimit();
-  if (ratelimit) {
-    try {
-      const headersList = await headers();
-      const ip =
-        headersList.get("x-real-ip") ??
-        headersList.get("x-forwarded-for")?.split(",")[0].trim() ??
-        "unknown";
-
-      const { success } = await ratelimit.limit(`${ip}:${parsed.data}`);
-      if (!success) {
-        return;
-      }
-    } catch (error) {
-      console.error("Falha ao verificar rate limit de visualizações:", error);
-    }
-  }
-
-  const supabase = createPublicClient();
-  if (!supabase) {
-    return;
-  }
-
-  try {
-    await supabase.rpc("increment_post_views", {
-      p_post_id: parsed.data,
-    });
-  } catch {
-    // Non-blocking legacy fallback
-  }
 }

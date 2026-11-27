@@ -58,6 +58,8 @@ export type ContactLead = {
   fbclid: string | null;
   source_page: string | null;
   email_sent: boolean;
+  internal_notes: string | null;
+  assigned_to: string | null;
   created_at: string;
 };
 
@@ -126,6 +128,8 @@ export type ContactLeadInsert = {
   fbclid?: string | null;
   source_page?: string | null;
   email_sent?: boolean;
+  internal_notes?: string | null;
+  assigned_to?: string | null;
   created_at?: string;
 };
 
@@ -283,6 +287,46 @@ export type AdminUserInsert = {
 
 export type AdminUserUpdate = Partial<Omit<AdminUserInsert, "id" | "created_at">>;
 
+export type BlogRedirect = {
+  old_slug: string;
+  new_slug: string;
+  created_at: string;
+};
+
+export type BlogRedirectInsert = {
+  old_slug: string;
+  new_slug: string;
+  created_at?: string;
+};
+
+export type BlogRedirectUpdate = Partial<Omit<BlogRedirectInsert, "old_slug">>;
+
+export type Tag = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export type TagInsert = {
+  id?: string;
+  name: string;
+  slug: string;
+};
+
+export type TagUpdate = Partial<Omit<TagInsert, "id">>;
+
+export type PostTag = {
+  post_id: string;
+  tag_id: string;
+};
+
+export type PostTagInsert = {
+  post_id: string;
+  tag_id: string;
+};
+
+export type PostTagUpdate = Partial<PostTagInsert>;
+
 export type Database = {
   public: {
     Tables: {
@@ -392,6 +436,39 @@ export type Database = {
         Insert: AdminUserInsert;
         Update: AdminUserUpdate;
         Relationships: [];
+      };
+      blog_redirects: {
+        Row: BlogRedirect;
+        Insert: BlogRedirectInsert;
+        Update: BlogRedirectUpdate;
+        Relationships: [];
+      };
+      tags: {
+        Row: Tag;
+        Insert: TagInsert;
+        Update: TagUpdate;
+        Relationships: [];
+      };
+      post_tags: {
+        Row: PostTag;
+        Insert: PostTagInsert;
+        Update: PostTagUpdate;
+        Relationships: [
+          {
+            foreignKeyName: "post_tags_post_id_fkey";
+            columns: ["post_id"];
+            isOneToOne: false;
+            referencedRelation: "posts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "post_tags_tag_id_fkey";
+            columns: ["tag_id"];
+            isOneToOne: false;
+            referencedRelation: "tags";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Views: {

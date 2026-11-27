@@ -23,23 +23,67 @@ function isMissingTableError(
   );
 }
 
+function isMissingColumnError(
+  error: { code?: string; message?: string } | null
+): boolean {
+  if (!error) return false;
+  const code = error.code ?? "";
+  const msg = (error.message ?? "").toLowerCase();
+  return (
+    code === "42703" ||
+    code === "PGRST204" ||
+    ((msg.includes("internal_notes") || msg.includes("assigned_to")) &&
+      (msg.includes("does not exist") || msg.includes("could not find")))
+  );
+}
+
 export default async function AdminLeadsPage() {
   await requireAdmin();
 
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  const initialQuery = await supabase
     .from("contact_leads")
     .select(
-      "id, name, email, phone, subject, message, status, utm_source, utm_medium, utm_campaign, gclid, fbclid, source_page, email_sent, created_at"
+      "id, name, email, phone, subject, message, status, utm_source, utm_medium, utm_campaign, gclid, fbclid, source_page, email_sent, internal_notes, assigned_to, created_at"
     )
     .order("created_at", { ascending: false });
+
+  let rows: Array<
+    Omit<AdminLeadItem, "status" | "email_sent"> & {
+      status: string;
+      email_sent: boolean | null;
+    }
+  > = [];
+  let error = initialQuery.error;
+
+  if (error && isMissingColumnError(error)) {
+    const fallbackQuery = await supabase
+      .from("contact_leads")
+      .select(
+        "id, name, email, phone, subject, message, status, utm_source, utm_medium, utm_campaign, gclid, fbclid, source_page, email_sent, created_at"
+      )
+      .order("created_at", { ascending: false });
+
+    error = fallbackQuery.error;
+    rows = (fallbackQuery.data ?? []).map((row) => ({
+      ...row,
+      internal_notes: null,
+      assigned_to: null,
+    }));
+  } else {
+    rows = (initialQuery.data ?? []).map((row) => ({
+      ...row,
+      internal_notes: row.internal_notes ?? null,
+      assigned_to: row.assigned_to ?? null,
+    }));
+  }
 
   const tableMissing = isMissingTableError(error);
   const emailNotificationsEnabled = Boolean(
     process.env.RESEND_API_KEY?.trim() && process.env.CONTACT_EMAIL?.trim()
   );
 
-  const leads: AdminLeadItem[] = (data ?? []).map((row) => ({
+  const leads: AdminLeadItem[] = rows.map((row) => ({
     id: row.id,
     name: row.name,
     email: row.email,
@@ -56,6 +100,8 @@ export default async function AdminLeadsPage() {
     fbclid: row.fbclid,
     source_page: row.source_page,
     email_sent: Boolean(row.email_sent),
+    internal_notes: row.internal_notes ?? null,
+    assigned_to: row.assigned_to ?? null,
     created_at: row.created_at,
   }));
 

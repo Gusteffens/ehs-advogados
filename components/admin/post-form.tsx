@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   ArrowLeft,
+  Check,
   CheckCircle2,
   ChevronDown,
   CircleDot,
@@ -21,6 +22,7 @@ import {
   Eye,
   Loader2,
   Maximize2,
+  MessageCircle,
   Minimize2,
   RotateCcw,
   Save,
@@ -197,6 +199,7 @@ export function PostForm({
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const isSubmittingRef = useRef(false);
@@ -548,6 +551,32 @@ export function PostForm({
     : null;
   const selectedCategory = categories.find((c) => c.id === category);
 
+  const shareSlug = (liveSlug || slug).trim();
+  const canCopyWhatsAppSummary = Boolean(title.trim() && shareSlug);
+
+  const handleCopyWhatsAppSummary = async () => {
+    if (!canCopyWhatsAppSummary) return;
+    const summaryParts = [
+      `*${title.trim()}*`,
+      ...(excerpt.trim() ? [excerpt.trim()] : []),
+      `Leia completo: https://ehsadvogados.com.br/blog/${shareSlug}`,
+    ];
+    try {
+      await navigator.clipboard.writeText(summaryParts.join("\n\n"));
+      setCopiedWhatsApp(true);
+      toast.success(
+        "Resumo copiado para WhatsApp!",
+        "Pronto para colar e compartilhar com clientes ou redes sociais."
+      );
+      window.setTimeout(() => setCopiedWhatsApp(false), 2000);
+    } catch {
+      toast.error(
+        "Não foi possível copiar",
+        "Permita o acesso à área de transferência no navegador."
+      );
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto">
       {/* Studio Top Bar */}
@@ -637,6 +666,24 @@ export function PostForm({
             )}
             {focusMode ? "Sair do Foco" : "Modo Foco"}
           </Button>
+
+          {canCopyWhatsAppSummary && (
+            <Button
+              type="button"
+              variant="outline"
+              className="text-sm bg-white"
+              onClick={() => void handleCopyWhatsAppSummary()}
+              disabled={isPending}
+              title="Copiar resumo formatado com título, resumo e link para WhatsApp"
+            >
+              {copiedWhatsApp ? (
+                <Check className="h-4 w-4 text-emerald-600" />
+              ) : (
+                <MessageCircle className="h-4 w-4 text-gold-dark" />
+              )}
+              {copiedWhatsApp ? "Copiado!" : "Copiar p/ WhatsApp"}
+            </Button>
+          )}
 
           <Button
             type="button"

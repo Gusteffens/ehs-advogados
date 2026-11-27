@@ -5,7 +5,6 @@ import { Redis } from "@upstash/redis";
 let redisInstance: Redis | null = null;
 let contactRatelimitInstance: Ratelimit | null = null;
 let blogActionRatelimitInstance: Ratelimit | null = null;
-let viewRatelimitInstance: Ratelimit | null = null;
 let analyticsCollectRatelimitInstance: Ratelimit | null = null;
 
 function getRedis(): Redis | null {
@@ -63,25 +62,6 @@ export function getBlogActionRatelimit(): Ratelimit | null {
   });
 
   return blogActionRatelimitInstance;
-}
-
-/**
- * Rate limiter for public blog post view increments: 5 requests per 10 minutes per IP+post.
- */
-export function getViewRatelimit(): Ratelimit | null {
-  const redis = getRedis();
-  if (!redis) {
-    return null;
-  }
-
-  viewRatelimitInstance ??= new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(5, "10 m"),
-    analytics: false,
-    prefix: "@ehs/blog-views",
-  });
-
-  return viewRatelimitInstance;
 }
 
 /**

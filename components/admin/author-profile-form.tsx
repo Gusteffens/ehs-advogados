@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import {
   BadgeCheck,
   BookOpen,
+  ImagePlus,
   Loader2,
   Plus,
   Save,
   Shield,
+  Trash2,
+  UploadCloud,
   User as UserIcon,
   X,
 } from "lucide-react";
@@ -16,8 +19,17 @@ import type { AdminUserRow } from "@/app/actions/admin-users";
 import { AdminSecurityPanel } from "@/components/admin/admin-security-panel";
 import { useToast } from "@/components/admin/toast-provider";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import {
+  ACCEPTED_IMAGE_TYPES,
+  MAX_IMAGE_UPLOAD_BYTES,
+  MAX_IMAGE_UPLOAD_LABEL,
+  uploadAdminImage,
+} from "@/lib/admin/upload-client";
+import { cn, getErrorMessage } from "@/lib/utils";
 import type { Author } from "@/types/database";
+
+const AVATAR_ACCEPTED_TYPES = new Set<string>(ACCEPTED_IMAGE_TYPES);
+const AVATAR_ACCEPT_ATTR = ACCEPTED_IMAGE_TYPES.join(",");
 
 interface AuthorProfileFormProps {
   initialAuthor: Author | null;
@@ -58,6 +70,88 @@ export function AuthorProfileForm({
   );
   const [specialtyDraft, setSpecialtyDraft] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const [isDraggingAvatar, setIsDraggingAvatar] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarUploadProgress, setAvatarUploadProgress] = useState(0);
+  const [avatarUploadError, setAvatarUploadError] = useState<string | null>(null);
+
+  const handleAvatarFile = async (file: File) => {
+    setAvatarUploadError(null);
+
+    if (!AVATAR_ACCEPTED_TYPES.has(file.type)) {
+      const msg = "Formato inválido. Utilize JPEG, PNG, WebP, AVIF ou GIF.";
+      setAvatarUploadError(msg);
+      toast.error("Formato não suportado", msg);
+      return;
+    }
+
+    if (file.size <= 0 || file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      const msg = `A foto deve ter no máximo ${MAX_IMAGE_UPLOAD_LABEL}.`;
+      setAvatarUploadError(msg);
+      toast.error("Arquivo muito grande", msg);
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    setAvatarUploadProgress(5);
+    try {
+      const res = await uploadAdminImage(file, "covers", (pct) => {
+        setAvatarUploadProgress(Math.max(5, Math.min(100, Math.round(pct))));
+      });
+
+      if (!res.ok) {
+        const msg = res.error || "Não foi possível enviar a foto de perfil.";
+        setAvatarUploadError(msg);
+        toast.error("Falha no upload da foto", msg);
+        return;
+      }
+
+      setAvatarUploadProgress(100);
+      setAvatarUrl(res.url);
+      toast.success(
+        "Foto enviada",
+        "Clique em \"Salvar Perfil de Autor\" para confirmar a alteração."
+      );
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, "Erro ao enviar a foto de perfil.");
+      setAvatarUploadError(msg);
+      toast.error("Erro no upload", msg);
+    } finally {
+      setIsUploadingAvatar(false);
+      setAvatarUploadProgress(0);
+      if (avatarInputRef.current) {
+        avatarInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleAvatarInputChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      void handleAvatarFile(file);
+    }
+  };
+
+  const handleAvatarDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDraggingAvatar(false);
+    if (isPending || isUploadingAvatar) return;
+    const file = event.dataTransfer.files?.[0];
+    if (file) {
+      void handleAvatarFile(file);
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarUploadError(null);
+    setAvatarUrl("");
+    if (avatarInputRef.current) {
+      avatarInputRef.current.value = "";
+    }
+  };
 
   const handleAddSpecialty = () => {
     const cleaned = specialtyDraft.trim();
@@ -230,25 +324,133 @@ export function AuthorProfileForm({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label
-              htmlFor="author-avatar"
-              className="block text-xs font-semibold uppercase tracking-[0.12em] text-forest-700"
-            >
-              URL da Foto / Avatar
-            </label>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="author-avatar-upload"
+                className="block text-xs font-semibold uppercase tracking-[0.12em] text-forest-700"
+              >
+                Foto / Avatar do Autor
+              </label>
+              {avatarUrl && !isUploadingAvatar && (
+                <button
+                  type="button"
+                  onClick={handleRemoveAvatar}
+                  disabled={isPending}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Remover foto
+                </button>
+              )}
+            </div>
+
             <input
-              id="author-avatar"
-              type="text"
-              value={avatarUrl}
-              onChange={(e) => setAvatarUrl(e.target.value)}
-              placeholder="/images/team/luiza-haas.webp ou https://..."
-              className="w-full rounded-xl border border-forest-200 bg-cream-light px-4 py-2.5 text-sm text-ink placeholder:text-forest-400 focus:border-gold-dark focus:outline-none focus:ring-2 focus:ring-champagne-400/30"
+              ref={avatarInputRef}
+              id="author-avatar-upload"
+              type="file"
+              accept={AVATAR_ACCEPT_ATTR}
+              onChange={handleAvatarInputChange}
+              disabled={isPending || isUploadingAvatar}
+              className="hidden"
             />
-            <p className="text-[11px] text-forest-500">
-              Aceita caminhos locais do site (ex.: <code>/images/team/...</code>)
-              ou URLs HTTPS públicas.
-            </p>
+
+            <div
+              role="button"
+              tabIndex={isPending || isUploadingAvatar ? -1 : 0}
+              aria-label="Enviar foto de perfil do autor"
+              onClick={() => {
+                if (!isPending && !isUploadingAvatar) {
+                  avatarInputRef.current?.click();
+                }
+              }}
+              onKeyDown={(e) => {
+                if (
+                  (e.key === "Enter" || e.key === " ") &&
+                  !isPending &&
+                  !isUploadingAvatar
+                ) {
+                  e.preventDefault();
+                  avatarInputRef.current?.click();
+                }
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (!isPending && !isUploadingAvatar) {
+                  setIsDraggingAvatar(true);
+                }
+              }}
+              onDragLeave={() => setIsDraggingAvatar(false)}
+              onDrop={handleAvatarDrop}
+              className={cn(
+                "flex flex-col sm:flex-row items-center gap-4 rounded-2xl border-2 border-dashed p-4 transition-all cursor-pointer",
+                isDraggingAvatar
+                  ? "border-gold bg-champagne-50/80 scale-[1.005]"
+                  : "border-forest-200 bg-cream-light/70 hover:border-gold-dark/70 hover:bg-cream/60",
+                (isPending || isUploadingAvatar) &&
+                  "opacity-80 pointer-events-none"
+              )}
+            >
+              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-forest-200 bg-white flex items-center justify-center shadow-2xs">
+                {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={avatarUrl}
+                    alt={fullName || "Prévia do avatar"}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <UserIcon className="h-8 w-8 text-forest-400" />
+                )}
+
+                {isUploadingAvatar && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-ink/70 text-gold">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 min-w-0 text-center sm:text-left space-y-1">
+                {isUploadingAvatar ? (
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-ink tabular-nums">
+                      Enviando foto... {avatarUploadProgress}%
+                    </p>
+                    <div className="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-forest-100 mx-auto sm:mx-0">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-gold-dark via-gold to-forest-700 transition-all duration-200"
+                        style={{ width: `${avatarUploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink">
+                      {avatarUrl ? (
+                        <ImagePlus className="h-4 w-4 text-gold-dark" />
+                      ) : (
+                        <UploadCloud className="h-4 w-4 text-gold-dark" />
+                      )}
+                      <span>
+                        {avatarUrl
+                          ? "Arraste uma nova foto ou clique para substituir"
+                          : "Arraste uma foto ou clique para enviar"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-forest-600/80">
+                      JPEG, PNG, WebP ou AVIF · Até {MAX_IMAGE_UPLOAD_LABEL} ·
+                      Proporção quadrada (1:1) recomendada
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {avatarUploadError && (
+              <p className="text-xs text-red-600" role="alert">
+                {avatarUploadError}
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">

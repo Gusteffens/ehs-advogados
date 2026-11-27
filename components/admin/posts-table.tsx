@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -129,6 +129,13 @@ export function PostsTable({ posts, categories, authors }: PostsTableProps) {
     "publish" | "draft" | "delete" | null
   >(null);
   const [isBulkTransition, startBulkTransition] = useTransition();
+  const [nowMs, setNowMs] = useState<number | null>(null);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setNowMs(Date.now());
+    });
+  }, []);
 
   const counts = useMemo(() => {
     let published = 0;
@@ -539,6 +546,11 @@ export function PostsTable({ posts, categories, authors }: PostsTableProps) {
                 paginatedPosts.map((post) => {
                   const isSelected = selectedIds.has(post.id);
                   const isPublished = post.status === "published";
+                  const isScheduled =
+                    isPublished &&
+                    Boolean(post.published_at) &&
+                    nowMs !== null &&
+                    new Date(post.published_at!).getTime() > nowMs;
                   const seo = getSeoReadiness(post);
 
                   return (
@@ -643,26 +655,32 @@ export function PostsTable({ posts, categories, authors }: PostsTableProps) {
                         </span>
                       </td>
 
-                      {/* Inline Publish / Draft Toggle */}
+                      {/* Inline Publish / Scheduled / Draft Toggle */}
                       <td className="px-4 py-3.5">
                         <button
                           type="button"
                           onClick={() => void handleInlineStatusToggle(post)}
                           disabled={togglingId === post.id}
                           title={
-                            isPublished
-                              ? "Clique para mover para rascunho"
-                              : "Clique para publicar agora"
+                            isScheduled
+                              ? `Agendado para ${formatAdminDate(post.published_at!)} — Clique para mover para rascunho`
+                              : isPublished
+                                ? "Clique para mover para rascunho"
+                                : "Clique para publicar agora"
                           }
                           className={cn(
                             "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-60",
-                            isPublished
-                              ? "bg-forest-100 text-forest-800 hover:bg-forest-200"
-                              : "bg-champagne-200/80 text-champagne-900 hover:bg-champagne-300/80"
+                            isScheduled
+                              ? "bg-champagne-100 text-champagne-900 border border-champagne-400/70 hover:bg-champagne-200/80"
+                              : isPublished
+                                ? "bg-forest-100 text-forest-800 hover:bg-forest-200"
+                                : "bg-champagne-200/80 text-champagne-900 hover:bg-champagne-300/80"
                           )}
                         >
                           {togglingId === post.id ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : isScheduled ? (
+                            <Clock className="h-3 w-3 text-gold-dark shrink-0" />
                           ) : (
                             <span
                               className={cn(
@@ -671,7 +689,11 @@ export function PostsTable({ posts, categories, authors }: PostsTableProps) {
                               )}
                             />
                           )}
-                          {isPublished ? "Publicado" : "Rascunho"}
+                          {isScheduled
+                            ? "Agendado"
+                            : isPublished
+                              ? "Publicado"
+                              : "Rascunho"}
                         </button>
                       </td>
 

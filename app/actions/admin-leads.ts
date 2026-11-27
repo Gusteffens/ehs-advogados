@@ -15,6 +15,35 @@ const uuidListSchema = z
 
 const leadStatusSchema = z.enum(["new", "contacted", "archived"]);
 
+const leadCrmSchema = z.object({
+  internal_notes: z
+    .string()
+    .trim()
+    .max(4000, "As anotações internas devem ter no máximo 4.000 caracteres.")
+    .nullable()
+    .optional(),
+  assigned_to: z
+    .string()
+    .trim()
+    .max(120, "Nome do responsável muito longo.")
+    .nullable()
+    .optional(),
+});
+
+function isMissingCrmColumnError(
+  error: { code?: string; message?: string } | null
+): boolean {
+  if (!error) return false;
+  const code = error.code ?? "";
+  const msg = (error.message ?? "").toLowerCase();
+  return (
+    code === "42703" ||
+    code === "PGRST204" ||
+    ((msg.includes("internal_notes") || msg.includes("assigned_to")) &&
+      (msg.includes("does not exist") || msg.includes("could not find")))
+  );
+}
+
 export interface AdminLeadActionResult {
   ok: boolean;
   error?: string;
@@ -181,4 +210,60 @@ export async function bulkDeleteLeads(
 
   revalidateLeadPaths();
   return { ok: true, count: uniqueIds.length };
+}
+
+export async function updateLeadCrm(
+  id: string,
+  input: {
+    internal_notes?: string | null;
+    assigned_to?: string | null;
+  }
+): Promise<AdminLeadActionResult> {
+  const session = await requireAdmin();
+  const rateLimitError = await enforceLeadActionRatelimit(session.userId ?? "admin");
+  if (rateLimitError) {
+    return { ok: false, error: rateLimitError };
+  }
+
+  const parsedId = uuidSchema.safeParse(id);
+  if (!parsedId.success) {
+    return { ok: false, error: "Identificador do lead inválido." };
+  }
+
+  const parsedInput = leadCrmSchema.safeParse(input);
+  if (!parsedInput.success) {
+    return {
+      ok: false,
+      error:
+        parsedInput.error.issues[0]?.message ??
+        "Dados de triagem interna inválidos.",
+    };
+  }
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("contact_leads")
+    .update({
+      internal_notes: parsedInput.data.internal_notes || null,
+      assigned_to: parsedInput.data.assigned_to || null,
+    })
+    .eq("id", parsedId.data);
+
+  if (error) {
+    if (isMissingCrmColumnError(error)) {
+      return {
+        ok: false,
+        error:
+          "Aplique a migration 006_leads_crm_and_redirects.sql no Supabase para habilitar anotações internas e atribuição de responsável.",
+      };
+    }
+    console.error("Failed to update lead CRM fields:", error);
+    return {
+      ok: false,
+      error: "Não foi possível salvar as anotações internas do lead.",
+    };
+  }
+
+  revalidateLeadPaths();
+  return { ok: true, count: 1 };
 }

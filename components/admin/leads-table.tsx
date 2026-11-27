@@ -18,6 +18,7 @@ import {
   Phone,
   Search,
   Trash2,
+  UserCheck,
   X,
 } from "lucide-react";
 import {
@@ -51,6 +52,8 @@ export interface AdminLeadItem {
   fbclid: string | null;
   source_page: string | null;
   email_sent: boolean;
+  internal_notes: string | null;
+  assigned_to: string | null;
   created_at: string;
 }
 
@@ -99,6 +102,8 @@ function exportLeadsToCsv(items: AdminLeadItem[]) {
     "Telefone",
     "Assunto",
     "Status",
+    "Responsável",
+    "Anotações Internas",
     "E-mail Enviado",
     "Mensagem",
     "Página de Origem",
@@ -116,6 +121,8 @@ function exportLeadsToCsv(items: AdminLeadItem[]) {
     lead.phone ?? "",
     lead.subject ?? "",
     STATUS_LABELS[lead.status],
+    lead.assigned_to ?? "",
+    lead.internal_notes ?? "",
     lead.email_sent ? "Sim" : "Falha",
     lead.message,
     lead.source_page ?? "",
@@ -191,7 +198,9 @@ export function LeadsTable({
         (lead.subject?.toLowerCase().includes(q) ?? false) ||
         lead.message.toLowerCase().includes(q) ||
         (lead.utm_source?.toLowerCase().includes(q) ?? false) ||
-        (lead.utm_campaign?.toLowerCase().includes(q) ?? false)
+        (lead.utm_campaign?.toLowerCase().includes(q) ?? false) ||
+        (lead.assigned_to?.toLowerCase().includes(q) ?? false) ||
+        (lead.internal_notes?.toLowerCase().includes(q) ?? false)
       );
     });
   }, [leads, search, statusFilter]);
@@ -614,6 +623,15 @@ export function LeadsTable({
                               {lead.utm_source}
                             </span>
                           )}
+                          {lead.assigned_to && (
+                            <span
+                              title={`Responsável: ${lead.assigned_to}`}
+                              className="inline-flex items-center gap-1 rounded-md bg-champagne-100/85 border border-champagne-300/60 px-1.5 py-0.5 text-[10px] font-semibold text-champagne-900"
+                            >
+                              <UserCheck className="h-2.5 w-2.5 text-gold-dark shrink-0" />
+                              {lead.assigned_to}
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-forest-700/90 line-clamp-2 leading-relaxed">
                           {lead.message}
@@ -773,6 +791,12 @@ export function LeadsTable({
                             {lead.subject}
                           </span>
                         )}
+                        {lead.assigned_to && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-champagne-100/85 border border-champagne-300/60 px-2 py-0.5 text-[10px] font-semibold text-champagne-900">
+                            <UserCheck className="h-2.5 w-2.5 text-gold-dark" />
+                            {lead.assigned_to}
+                          </span>
+                        )}
                         {lead.email_sent ? (
                           <span className="inline-flex items-center gap-1 rounded-md bg-forest-50 px-2 py-0.5 text-[10px] font-medium text-forest-700">
                             <CheckCircle2 className="h-3 w-3 text-forest-600" />
@@ -919,6 +943,7 @@ export function LeadsTable({
         isDeleting={isDeleting}
         onClose={() => setActiveLeadId(null)}
         onStatusChange={handleStatusChange}
+        onCrmSaved={() => router.refresh()}
         onDelete={handleSingleDelete}
       />
 
