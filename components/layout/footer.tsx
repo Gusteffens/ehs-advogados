@@ -16,6 +16,7 @@ const quickLinks = [
   { label: "Sobre o Escritório", href: "/sobre" },
   { label: "Nossa Equipe", href: "/equipe" },
   { label: "Blog Jurídico", href: "/blog" },
+  { label: "Prevenção a Fraudes", href: "/seguranca" },
   { label: "Fale Conosco", href: "/contato" },
 ];
 
@@ -167,7 +168,13 @@ export function Footer() {
             © {new Date().getFullYear()} {SITE_CONFIG.legalName}. Todos os
             direitos reservados.
           </p>
-          <div className="flex gap-6">
+          <div className="flex flex-wrap items-center justify-center gap-6">
+            <Link
+              href="/seguranca"
+              className="text-xs text-cream/65 hover:text-cream transition-colors no-underline"
+            >
+              Cartilha de Segurança
+            </Link>
             <Link
               href="/politica-de-privacidade"
               className="text-xs text-cream/65 hover:text-cream transition-colors no-underline"
