@@ -6,6 +6,7 @@ export interface AdminSessionPayload {
   email: string;
   name: string;
   role: "admin";
+  tv?: number;
   iat: number;
   exp: number;
 }
@@ -92,6 +93,9 @@ export async function signSessionToken(
     email: payload.email,
     name: payload.name,
     role: "admin",
+    ...(typeof payload.tv === "number" && Number.isInteger(payload.tv) && payload.tv >= 1
+      ? { tv: payload.tv }
+      : {}),
     iat: payload.iat ?? now,
     exp: payload.exp ?? now + ttlSeconds,
   };
@@ -165,7 +169,9 @@ export async function verifySessionToken(
       typeof parsed.name !== "string" ||
       parsed.role !== "admin" ||
       typeof parsed.iat !== "number" ||
-      typeof parsed.exp !== "number"
+      typeof parsed.exp !== "number" ||
+      (parsed.tv !== undefined &&
+        (typeof parsed.tv !== "number" || !Number.isInteger(parsed.tv) || parsed.tv < 1))
     ) {
       return null;
     }

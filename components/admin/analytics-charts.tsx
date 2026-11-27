@@ -390,9 +390,12 @@ export function TrafficTrendChart({
         {activeDatum && activeUniquePt && (
           <div
             style={{
-              left: `${Math.min(Math.max((activeUniquePt.x / width) * 100, 14), 86)}%`,
+              left: `clamp(min(50%, 6.75rem), ${Math.min(
+                Math.max((activeUniquePt.x / width) * 100, 18),
+                82
+              )}%, max(50%, calc(100% - 6.75rem)))`,
             }}
-            className="pointer-events-none absolute top-2 -translate-x-1/2 z-20 w-52 rounded-xl border border-gold/30 bg-ink/95 px-3.5 py-2.5 text-xs text-cream shadow-xl backdrop-blur-sm"
+            className="pointer-events-none absolute top-2 -translate-x-1/2 z-20 w-52 max-w-[calc(100vw-3rem)] rounded-xl border border-gold/30 bg-ink/95 px-3.5 py-2.5 text-xs text-cream shadow-xl backdrop-blur-sm"
           >
             <p className="font-display text-sm font-bold text-gold mb-1.5">
               {formatLongDate(activeDatum.date)}

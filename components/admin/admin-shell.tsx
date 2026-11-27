@@ -115,13 +115,18 @@ export function AdminShell({
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setMobileMenuOpen(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [mobileMenuOpen]);
 
   const renderNavLinks = (onNavigate?: () => void) => (
@@ -344,7 +349,7 @@ export function AdminShell({
                 className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-3.5 py-2 text-xs font-semibold text-gold hover:bg-primary transition-colors shadow-xs no-underline"
               >
                 <PenSquare className="h-3.5 w-3.5" />
-                <span className="hidden xs:inline sm:inline">Novo Artigo</span>
+                <span className="hidden sm:inline">Novo Artigo</span>
               </Link>
 
               <Link

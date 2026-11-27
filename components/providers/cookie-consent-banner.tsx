@@ -2,25 +2,78 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
-import { getConsentState, setConsentState } from "@/lib/tracking";
+import { ShieldCheck, X } from "lucide-react";
+import { getConsentState, setConsentState, type ConsentState } from "@/lib/tracking";
+
+export const OPEN_COOKIE_PREFERENCES_EVENT = "ehs:open-cookie-preferences";
+
+export function openCookiePreferences() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(OPEN_COOKIE_PREFERENCES_EVENT));
+  }
+}
+
+export function CookiePreferencesButton({
+  className,
+  children = "Gerenciar Cookies",
+}: {
+  className?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={openCookiePreferences}
+      className={className}
+    >
+      {children}
+    </button>
+  );
+}
 
 export function CookieConsentBanner() {
   const [visible, setVisible] = useState(false);
+  const [currentConsent, setCurrentConsent] = useState<ConsentState>("unset");
 
   useEffect(() => {
     const sync = () => {
-      setVisible(getConsentState() === "unset");
+      const state = getConsentState();
+      setCurrentConsent(state);
+      setVisible(state === "unset");
     };
+
+    const handleOpenPreferences = () => {
+      setCurrentConsent(getConsentState());
+      setVisible(true);
+    };
+
     sync();
     window.addEventListener("ehs:consent-change", sync);
-    return () => window.removeEventListener("ehs:consent-change", sync);
+    window.addEventListener("ehs:consent-updated", sync);
+    window.addEventListener(OPEN_COOKIE_PREFERENCES_EVENT, handleOpenPreferences);
+
+    return () => {
+      window.removeEventListener("ehs:consent-change", sync);
+      window.removeEventListener("ehs:consent-updated", sync);
+      window.removeEventListener(
+        OPEN_COOKIE_PREFERENCES_EVENT,
+        handleOpenPreferences
+      );
+    };
   }, []);
 
   if (!visible) return null;
 
   const handleChoice = (choice: "granted" | "denied") => {
     setConsentState(choice);
+    try {
+      window.dispatchEvent(
+        new CustomEvent("ehs:consent-updated", { detail: { state: choice } })
+      );
+    } catch {
+      // Ignore event dispatch errors
+    }
+    setCurrentConsent(choice);
     setVisible(false);
   };
 
@@ -34,8 +87,20 @@ export function CookieConsentBanner() {
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gold/15 text-gold">
           <ShieldCheck className="h-5 w-5" />
         </div>
-        <div className="space-y-2 text-xs sm:text-[13px] leading-relaxed">
-          <p className="font-semibold text-cream">Privacidade e Cookies</p>
+        <div className="flex-1 space-y-2 text-xs sm:text-[13px] leading-relaxed">
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-semibold text-cream">Privacidade e Cookies</p>
+            {currentConsent !== "unset" && (
+              <button
+                type="button"
+                onClick={() => setVisible(false)}
+                aria-label="Fechar preferências de cookies"
+                className="text-cream/60 hover:text-cream transition-colors cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
           <p className="text-cream/80">
             Utilizamos cookies essenciais e, com o seu consentimento, cookies de
             análise e mensuração de campanhas. Consulte nossa{" "}
@@ -47,6 +112,16 @@ export function CookieConsentBanner() {
             </Link>
             .
           </p>
+          {currentConsent !== "unset" && (
+            <p className="text-[11px] text-gold/85">
+              Preferência atual:{" "}
+              {currentConsent === "granted"
+                ? "Cookies de análise e mensuração aceitos"
+                : "Apenas cookies essenciais"}
+              . Você pode alterar ou revogar seu consentimento a qualquer
+              momento.
+            </p>
+          )}
         </div>
       </div>
 

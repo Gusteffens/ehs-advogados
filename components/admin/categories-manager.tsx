@@ -125,6 +125,23 @@ export function CategoriesManager({
     setEditError(null);
   };
 
+  const handleEditKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>,
+    catId: string
+  ) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (!isUpdating) {
+        handleSaveEdit(catId);
+      }
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      if (!isUpdating) {
+        cancelEditing();
+      }
+    }
+  };
+
   const handleSaveEdit = (catId: string) => {
     setEditError(null);
     if (!editName.trim()) {
@@ -338,6 +355,7 @@ export function CategoriesManager({
                             type="text"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
+                            onKeyDown={(e) => handleEditKeyDown(e, cat.id)}
                             className={`${inputClasses} py-2 text-xs`}
                             autoFocus
                           />
@@ -350,6 +368,7 @@ export function CategoriesManager({
                             type="text"
                             value={editSlug}
                             onChange={(e) => setEditSlug(e.target.value)}
+                            onKeyDown={(e) => handleEditKeyDown(e, cat.id)}
                             className={`${inputClasses} py-2 text-xs`}
                           />
                         </div>
@@ -363,6 +382,7 @@ export function CategoriesManager({
                           type="text"
                           value={editDescription}
                           onChange={(e) => setEditDescription(e.target.value)}
+                          onKeyDown={(e) => handleEditKeyDown(e, cat.id)}
                           placeholder="Breve descrição da categoria..."
                           className={`${inputClasses} py-2 text-xs`}
                         />

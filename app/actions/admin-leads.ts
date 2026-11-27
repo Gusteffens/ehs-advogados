@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -40,6 +40,7 @@ async function enforceLeadActionRatelimit(userId: string): Promise<string | null
 function revalidateLeadPaths() {
   revalidatePath("/admin/leads");
   revalidatePath("/admin");
+  revalidateTag("admin-leads-count", "max");
 }
 
 export async function updateLeadStatus(

@@ -262,6 +262,7 @@ export type AdminUser = {
   password_hash: string;
   author_id: string | null;
   is_active: boolean;
+  token_version: number;
   last_login_at: string | null;
   created_at: string;
   updated_at: string;
@@ -274,6 +275,7 @@ export type AdminUserInsert = {
   password_hash: string;
   author_id?: string | null;
   is_active?: boolean;
+  token_version?: number;
   last_login_at?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -440,6 +442,21 @@ export type Database = {
           p_device_type?: string;
         };
         Returns: undefined;
+      };
+      get_analytics_breakdowns: {
+        Args: {
+          p_start: string;
+          p_end: string;
+          p_post_id?: string | null;
+        };
+        Returns: {
+          trafficSources: { label: string; count: number }[];
+          topReferrers: { label: string; count: number }[];
+          devices: { label: string; count: number }[];
+          eventsBreakdown: { label: string; count: number }[];
+          totalSessions: number;
+          totalEvents: number;
+        };
       };
     };
     Enums: {

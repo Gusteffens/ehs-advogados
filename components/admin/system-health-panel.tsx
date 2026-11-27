@@ -123,8 +123,37 @@ export function SystemHealthPanel() {
   }, []);
 
   useEffect(() => {
-    void loadHealth(false);
-  }, [loadHealth]);
+    let active = true;
+
+    async function fetchInitialHealth() {
+      try {
+        const res = await fetch("/api/admin/health", { cache: "no-store" });
+        if (!res.ok) {
+          throw new Error(`Status ${res.status}`);
+        }
+        const json = (await res.json()) as AdminHealthResponse;
+        if (active) {
+          setData(json);
+          setError(null);
+        }
+      } catch (err) {
+        console.error("Failed to fetch admin health:", err);
+        if (active) {
+          setError("Não foi possível verificar o status dos serviços.");
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void fetchInitialHealth();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleRefreshInstagram = async () => {
     setRefreshingIg(true);

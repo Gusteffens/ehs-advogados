@@ -245,10 +245,18 @@ export function PostForm({
         typeof parsed.title === "string" &&
         typeof parsed.content === "string"
       ) {
+        const initialTagsKey = (initialPost?.tags ?? []).join("|");
+        const parsedTagsKey = Array.isArray(parsed.tags)
+          ? parsed.tags.join("|")
+          : "";
         const differsFromInitial =
           parsed.title !== (initialPost?.title ?? "") ||
           parsed.content !== (initialPost?.content ?? "") ||
-          parsed.excerpt !== (initialPost?.excerpt ?? "");
+          parsed.excerpt !== (initialPost?.excerpt ?? "") ||
+          (parsed.coverUrl ?? "") !== (initialPost?.cover_image_url ?? "") ||
+          (parsed.category ?? "") !== (initialPost?.category_id ?? "") ||
+          parsedTagsKey !== initialTagsKey ||
+          (parsed.publishedAtLocal ?? "") !== initialPublishedAtLocal;
         if (differsFromInitial) {
           queueMicrotask(() => setRecoveredDraft(parsed));
         }
@@ -256,11 +264,11 @@ export function PostForm({
     } catch {
       // Ignore invalid localStorage payload
     }
-  }, [draftStorageKey, initialPost]);
+  }, [draftStorageKey, initialPost, initialPublishedAtLocal]);
 
   // Debounced localStorage autosave when dirty
   useEffect(() => {
-    if (!isDirty || isSubmittingRef.current) return;
+    if (!isDirty || isSubmittingRef.current || recoveredDraft !== null) return;
 
     const timer = window.setTimeout(() => {
       try {
@@ -286,6 +294,7 @@ export function PostForm({
     return () => window.clearTimeout(timer);
   }, [
     isDirty,
+    recoveredDraft,
     title,
     slug,
     category,
@@ -938,7 +947,7 @@ export function PostForm({
 
       {/* Floating Focus Mode Status Bar */}
       {focusMode && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-2xl rounded-2xl bg-ink/95 text-cream border border-gold/30 shadow-2xl backdrop-blur-md px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+        <div className="fixed bottom-5 left-1/2 lg:left-[calc(50%+8rem)] -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-2xl rounded-2xl bg-ink/95 text-cream border border-gold/30 shadow-2xl backdrop-blur-md px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
             <span className="font-semibold tabular-nums text-cream">
               {wordCount} {wordCount === 1 ? "palavra" : "palavras"}

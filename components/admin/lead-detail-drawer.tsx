@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SITE_CONFIG } from "@/lib/site-config";
 import { useToast } from "@/components/admin/toast-provider";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import type { AdminLeadItem, LeadStatus } from "@/components/admin/leads-table";
@@ -69,7 +70,7 @@ export function buildWhatsAppReplyHref(lead: AdminLeadItem): string | null {
   const digits = lead.phone.replace(/\D/g, "");
   if (digits.length < 10) return null;
   const withCountry = digits.startsWith("55") ? digits : `55${digits}`;
-  const greeting = `Olá ${lead.name}, recebemos seu contato no site da Erlo, Haas & Silva Advocacia${
+  const greeting = `Olá ${lead.name}, recebemos seu contato no site da ${SITE_CONFIG.legalName}${
     lead.subject ? ` sobre "${lead.subject}"` : ""
   }. Como podemos ajudar?`;
   return `https://wa.me/${withCountry}?text=${encodeURIComponent(greeting)}`;
@@ -280,7 +281,7 @@ export function LeadDetailDrawer({
                   <Mail className="h-4 w-4 text-gold-dark shrink-0" />
                   <a
                     href={`mailto:${lead.email}?subject=${encodeURIComponent(
-                      lead.subject ? `Re: ${lead.subject}` : "Retorno — Erlo, Haas & Silva Advocacia"
+                      lead.subject ? `Re: ${lead.subject}` : `Retorno — ${SITE_CONFIG.legalName}`
                     )}`}
                     className="text-sm font-medium text-ink hover:text-gold-dark truncate no-underline"
                   >

@@ -82,7 +82,7 @@ function normalizeAcceptedTypes(raw: unknown): string[] {
       (item): item is string => typeof item === "string"
     );
   }
-  return ["image/jpeg", "image/png", "image/webp", "image/avif"];
+  return ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"];
 }
 
 const ACCEPTED_LIST = normalizeAcceptedTypes(ACCEPTED_IMAGE_TYPES);
@@ -826,7 +826,7 @@ export function TiptapEditor({
 
       if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
         const msg =
-          "Formato de imagem inválido. Utilize JPEG, PNG, WebP ou AVIF.";
+          "Formato de imagem inválido. Utilize JPEG, PNG, WebP, AVIF ou GIF.";
         setUploadError(msg);
         toast.error("Formato inválido", msg);
         return;
@@ -1276,7 +1276,7 @@ export function TiptapEditor({
       />
 
       {/* Sticky Editorial Toolbar */}
-      <div className="sticky top-0 z-20 rounded-t-2xl border-b border-forest-100 bg-cream-light/95 backdrop-blur-sm">
+      <div className="sticky top-16 z-10 rounded-t-2xl border-b border-forest-100 bg-cream-light/95 backdrop-blur-sm">
         <div
           className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
           role="toolbar"
@@ -1552,13 +1552,15 @@ export function TiptapEditor({
             Solte a imagem para inserir no artigo
           </p>
           <p className="text-xs text-forest-700 mt-0.5">
-            JPEG, PNG, WebP ou AVIF · Até {MAX_IMAGE_UPLOAD_LABEL}
+            JPEG, PNG, WebP, AVIF ou GIF · Até {MAX_IMAGE_UPLOAD_LABEL}
           </p>
         </div>
       )}
 
       {/* Editor Canvas */}
-      <EditorContent editor={editor} />
+      <div className="overflow-x-hidden">
+        <EditorContent editor={editor} />
+      </div>
 
       {/* Floating Chancery Slash Command Palette (`/`) */}
       {slashMenu?.open && (

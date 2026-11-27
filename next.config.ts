@@ -1,19 +1,19 @@
 import type { NextConfig } from "next";
 
-function getSupabaseHostname(): string {
+function getSupabaseHostname(): string | null {
     const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (rawUrl) {
         try {
             return new URL(rawUrl).hostname;
         } catch {
-            // Fallback to default project host when env var is invalid
+            return null;
         }
     }
-    return "kypsmdjogvvvwornxmqp.supabase.co";
+    return null;
 }
 
 const supabaseHostname = getSupabaseHostname();
-const supabaseOrigin = `https://${supabaseHostname}`;
+const supabaseOrigin = supabaseHostname ? `https://${supabaseHostname}` : "";
 
 const nextConfig: NextConfig = {
     experimental: {
@@ -25,13 +25,15 @@ const nextConfig: NextConfig = {
         formats: ["image/avif", "image/webp"],
         deviceSizes: [640, 750, 828, 1080, 1200, 1920],
         imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-        remotePatterns: [
-            {
-                protocol: "https",
-                hostname: supabaseHostname,
-                pathname: "/storage/v1/object/public/**",
-            },
-        ],
+        remotePatterns: supabaseHostname
+            ? [
+                  {
+                      protocol: "https",
+                      hostname: supabaseHostname,
+                      pathname: "/storage/v1/object/public/**",
+                  },
+              ]
+            : [],
     },
     compiler: {
         removeConsole: process.env.NODE_ENV === "production"
@@ -69,7 +71,6 @@ const nextConfig: NextConfig = {
             "'self'",
             isDevelopment ? "'unsafe-eval'" : "",
             "'unsafe-inline'",
-            "https://challenges.cloudflare.com",
             "https://www.instagram.com",
             "https://*.instagram.com",
             ...facebookSources,
@@ -84,7 +85,7 @@ const nextConfig: NextConfig = {
             font-src 'self';
             img-src 'self' data: blob: ${supabaseOrigin} https://*.instagram.com https://*.cdninstagram.com https://*.fbcdn.net ${facebookSources.join(" ")} https://google.com ${googleAdsAndAnalyticsSources.join(" ")};
             connect-src 'self' ${supabaseOrigin} https://*.posthog.com https://*.instagram.com ${facebookSources.join(" ")} https://analytics.google.com https://stats.g.doubleclick.net ${googleAdsAndAnalyticsSources.join(" ")} https://cloudflareinsights.com https://*.cloudflareinsights.com;
-            frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://maps.google.com https://tagassistant.google.com https://*.google.com https://*.google.com.br https://*.doubleclick.net https://challenges.cloudflare.com https://www.instagram.com https://*.instagram.com https://www.googletagmanager.com ${facebookSources.join(" ")};
+            frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://maps.google.com https://tagassistant.google.com https://*.google.com https://*.google.com.br https://*.doubleclick.net https://www.instagram.com https://*.instagram.com https://www.googletagmanager.com ${facebookSources.join(" ")};
             frame-ancestors 'self' ${facebookSources.join(" ")} https://tagassistant.google.com https://*.google.com https://*.google.com.br;
             object-src 'none';
             base-uri 'self';
@@ -92,6 +93,33 @@ const nextConfig: NextConfig = {
             worker-src 'self' blob:;
             ${isDevelopment ? "" : "upgrade-insecure-requests;"}
         `.replace(/\s+/g, " ").trim();
+
+        const adminScriptSrc = [
+            "'self'",
+            isDevelopment ? "'unsafe-eval'" : "",
+            "'unsafe-inline'",
+        ].filter(Boolean).join(" ");
+
+        const AdminContentSecurityPolicy = `
+            default-src 'self';
+            script-src ${adminScriptSrc};
+            style-src 'self' 'unsafe-inline';
+            font-src 'self';
+            img-src 'self' data: blob: ${supabaseOrigin};
+            connect-src 'self' ${supabaseOrigin};
+            frame-src 'self';
+            frame-ancestors 'none';
+            object-src 'none';
+            base-uri 'self';
+            form-action 'self';
+            worker-src 'self' blob:;
+            ${isDevelopment ? "" : "upgrade-insecure-requests;"}
+        `.replace(/\s+/g, " ").trim();
+
+        const adminSecurityHeaders = [
+            { key: "Content-Security-Policy", value: AdminContentSecurityPolicy },
+            { key: "X-Frame-Options", value: "DENY" },
+        ];
 
         return [
             {
@@ -103,6 +131,14 @@ const nextConfig: NextConfig = {
                     { key: "X-Content-Type-Options", value: "nosniff" },
                     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
                 ],
+            },
+            {
+                source: "/admin/:path*",
+                headers: adminSecurityHeaders,
+            },
+            {
+                source: "/sign-in/:path*",
+                headers: adminSecurityHeaders,
             },
         ];
     },

@@ -52,7 +52,7 @@ export async function GET() {
   const supabaseStart = Date.now();
   try {
     const supabase = createAdminClient();
-    const [postsRes, leadsRes, analyticsRes, igRes, adminUsersRes] = await Promise.all([
+    const [postsRes, leadsRes, analyticsRes, igRes, adminUsersRes, bucketRes] = await Promise.all([
       supabase.from("posts").select("id", { count: "exact", head: true }),
       supabase
         .from("contact_leads")
@@ -69,6 +69,7 @@ export async function GET() {
       supabase
         .from("admin_users")
         .select("id", { count: "exact", head: true }),
+      supabase.storage.getBucket("blog-covers"),
     ]);
 
     adminUsersReady = !adminUsersRes.error;
@@ -77,21 +78,29 @@ export async function GET() {
     const latencyMs = Date.now() - supabaseStart;
     const coreOk = !postsRes.error && !leadsRes.error;
     const analyticsReady = !analyticsRes.error;
+    const bucketReady = !bucketRes.error && Boolean(bucketRes.data);
 
     checks.push({
       id: "supabase",
       name: "Supabase PostgreSQL",
       category: "database",
-      status: !coreOk ? "error" : analyticsReady ? "ok" : "warning",
+      status: !coreOk
+        ? "error"
+        : analyticsReady && bucketReady
+          ? "ok"
+          : "warning",
       summary: !coreOk
         ? "Falha ao consultar tabelas principais"
-        : analyticsReady
-          ? "Conexão saudável e todas as tabelas ativas"
-          : "Tabelas principais ativas; migration de analytics pendente",
+        : !analyticsReady
+          ? "Tabelas principais ativas; migration de analytics pendente"
+          : !bucketReady
+            ? "Tabelas ativas; bucket de mídia blog-covers indisponível"
+            : "Conexão saudável, tabelas e storage ativos",
       details: [
         `posts: ${postsRes.error ? "erro" : `${postsRes.count ?? 0} registros`}`,
         `contact_leads: ${leadsRes.error ? "erro" : `${leadsRes.count ?? 0} registros`}`,
         `article_analytics_daily: ${analyticsReady ? `${analyticsRes.count ?? 0} rollups` : "tabela ausente (aplicar 003_article_analytics.sql)"}`,
+        `storage (blog-covers): ${bucketReady ? (bucketRes.data?.public ? "ativo (público)" : "ativo (privado)") : "bucket ausente ou inacessível"}`,
       ],
       latencyMs,
     });

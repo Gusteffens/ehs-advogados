@@ -62,6 +62,180 @@ function isMissingSchemaError(error: { code?: string; message?: string } | null 
   );
 }
 
+function isMissingRpcError(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  if (error.code === "42883" || error.code === "PGRST202") {
+    return true;
+  }
+  const msg = (error.message ?? "").toLowerCase();
+  return (
+    msg.includes("could not find the function") ||
+    (msg.includes("function") && msg.includes("does not exist")) ||
+    msg.includes("schema cache")
+  );
+}
+
+interface RpcBreakdownEntry {
+  label: string;
+  count: number;
+}
+
+interface RpcBreakdownsPayload {
+  trafficSources?: RpcBreakdownEntry[];
+  topReferrers?: RpcBreakdownEntry[];
+  devices?: RpcBreakdownEntry[];
+  eventsBreakdown?: RpcBreakdownEntry[];
+  totalSessions?: number;
+  totalEvents?: number;
+}
+
+function mapRpcBreakdown(entries: RpcBreakdownEntry[] | undefined): BreakdownItem[] {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return [];
+  }
+  const valid = entries.filter(
+    (entry) =>
+      entry &&
+      typeof entry.label === "string" &&
+      entry.label.length > 0 &&
+      typeof entry.count === "number" &&
+      entry.count > 0
+  );
+  const total = valid.reduce((sum, entry) => sum + entry.count, 0);
+  return valid.map((entry) => ({
+    label: entry.label,
+    count: entry.count,
+    pct: total > 0 ? roundOneDecimal((entry.count / total) * 100) : 0,
+  }));
+}
+
+async function fetchBreakdownsWithFallback(
+  supabase: ReturnType<typeof createAdminClient>,
+  params: {
+    startDate: string;
+    endDate: string;
+    postId?: string | null;
+    includeEvents?: boolean;
+  }
+): Promise<{
+  missingSchema: boolean;
+  trafficSources: BreakdownItem[];
+  topReferrers: BreakdownItem[];
+  devices: BreakdownItem[];
+  eventsBreakdown: BreakdownItem[];
+}> {
+  const rpcRes = await supabase.rpc("get_analytics_breakdowns", {
+    p_start: params.startDate,
+    p_end: params.endDate,
+    p_post_id: params.postId ?? null,
+  });
+
+  if (!rpcRes.error && rpcRes.data && typeof rpcRes.data === "object") {
+    const payload = rpcRes.data as unknown as RpcBreakdownsPayload;
+    return {
+      missingSchema: false,
+      trafficSources: mapRpcBreakdown(payload.trafficSources),
+      topReferrers: mapRpcBreakdown(payload.topReferrers),
+      devices: mapRpcBreakdown(payload.devices),
+      eventsBreakdown: mapRpcBreakdown(payload.eventsBreakdown),
+    };
+  }
+
+  if (rpcRes.error && !isMissingRpcError(rpcRes.error)) {
+    if (isMissingSchemaError(rpcRes.error)) {
+      return {
+        missingSchema: true,
+        trafficSources: [],
+        topReferrers: [],
+        devices: [],
+        eventsBreakdown: [],
+      };
+    }
+    console.error("[analytics/queries] get_analytics_breakdowns RPC error:", rpcRes.error.message);
+  }
+
+  // Graceful fallback when migration 005 RPC is not yet applied
+  let sessionsQuery = supabase
+    .from("article_sessions")
+    .select("traffic_source, referrer_domain, device_type")
+    .gte("view_date", params.startDate)
+    .lte("view_date", params.endDate);
+
+  if (params.postId) {
+    sessionsQuery = sessionsQuery.eq("post_id", params.postId);
+  }
+
+  if (params.includeEvents) {
+    let eventsQuery = supabase
+      .from("article_events")
+      .select("event_type")
+      .gte("event_date", params.startDate)
+      .lte("event_date", params.endDate);
+
+    if (params.postId) {
+      eventsQuery = eventsQuery.eq("post_id", params.postId);
+    }
+
+    const [sessionsRes, eventsRes] = await Promise.all([sessionsQuery, eventsQuery]);
+
+    if (
+      isMissingSchemaError(sessionsRes.error) ||
+      isMissingSchemaError(eventsRes.error)
+    ) {
+      return {
+        missingSchema: true,
+        trafficSources: [],
+        topReferrers: [],
+        devices: [],
+        eventsBreakdown: [],
+      };
+    }
+
+    const sessionRows = (sessionsRes.data ?? []) as unknown as SessionBreakdownRow[];
+    const eventRows = (eventsRes.data ?? []) as unknown as { event_type: string }[];
+    const { trafficSources, topReferrers, devices } =
+      aggregateSessionBreakdowns(sessionRows);
+
+    const eventCounts = new Map<string, number>();
+    for (const row of eventRows) {
+      if (row.event_type) {
+        eventCounts.set(row.event_type, (eventCounts.get(row.event_type) ?? 0) + 1);
+      }
+    }
+
+    return {
+      missingSchema: false,
+      trafficSources,
+      topReferrers,
+      devices,
+      eventsBreakdown: buildBreakdown(eventCounts),
+    };
+  }
+
+  const sessionsRes = await sessionsQuery;
+  if (isMissingSchemaError(sessionsRes.error)) {
+    return {
+      missingSchema: true,
+      trafficSources: [],
+      topReferrers: [],
+      devices: [],
+      eventsBreakdown: [],
+    };
+  }
+
+  const sessionRows = (sessionsRes.data ?? []) as unknown as SessionBreakdownRow[];
+  const { trafficSources, topReferrers, devices } =
+    aggregateSessionBreakdowns(sessionRows);
+
+  return {
+    missingSchema: false,
+    trafficSources,
+    topReferrers,
+    devices,
+    eventsBreakdown: [],
+  };
+}
+
 function roundOneDecimal(value: number): number {
   return Math.round(value * 10) / 10;
 }
@@ -300,7 +474,7 @@ export async function getAnalyticsOverview(
   const prevStartDate = shiftDateString(startDate, -days);
   const dates = buildDateSequence(startDate, days);
 
-  const [postsRes, dailyRes, sessionsRes] = await Promise.all([
+  const [postsRes, dailyRes, breakdowns] = await Promise.all([
     supabase
       .from("posts")
       .select("id, title, slug, views, categories(name)")
@@ -313,11 +487,12 @@ export async function getAnalyticsOverview(
       )
       .gte("metric_date", prevStartDate)
       .lte("metric_date", endDate),
-    supabase
-      .from("article_sessions")
-      .select("traffic_source, referrer_domain, device_type")
-      .gte("view_date", startDate)
-      .lte("view_date", endDate),
+    fetchBreakdownsWithFallback(supabase, {
+      startDate,
+      endDate,
+      postId: null,
+      includeEvents: false,
+    }),
   ]);
 
   const posts = (postsRes.data ?? []) as unknown as PostMetaRow[];
@@ -326,10 +501,7 @@ export async function getAnalyticsOverview(
     postMap.set(post.id, post);
   }
 
-  if (
-    isMissingSchemaError(dailyRes.error) ||
-    isMissingSchemaError(sessionsRes.error)
-  ) {
+  if (isMissingSchemaError(dailyRes.error) || breakdowns.missingSchema) {
     const fallbackArticles: TopArticleMetric[] = posts
       .slice(0, 15)
       .map((post) => ({
@@ -364,7 +536,6 @@ export async function getAnalyticsOverview(
   }
 
   const dailyRows = (dailyRes.data ?? []) as unknown as DailyRow[];
-  const sessionRows = (sessionsRes.data ?? []) as unknown as SessionBreakdownRow[];
 
   const { summary, timeseries, scrollFunnel } = aggregateWindowMetrics(
     dailyRows,
@@ -449,8 +620,7 @@ export async function getAnalyticsOverview(
     }));
   }
 
-  const { trafficSources, topReferrers, devices } =
-    aggregateSessionBreakdowns(sessionRows);
+  const { trafficSources, topReferrers, devices } = breakdowns;
 
   return {
     range,
@@ -522,7 +692,7 @@ export async function getPostAnalytics(
     return null;
   }
 
-  const [dailyRes, sessionsRes, eventsRes] = await Promise.all([
+  const [dailyRes, breakdowns] = await Promise.all([
     supabase
       .from("article_analytics_daily")
       .select(
@@ -531,25 +701,18 @@ export async function getPostAnalytics(
       .eq("post_id", postId)
       .gte("metric_date", prevStartDate)
       .lte("metric_date", endDate),
-    supabase
-      .from("article_sessions")
-      .select("traffic_source, referrer_domain, device_type")
-      .eq("post_id", postId)
-      .gte("view_date", startDate)
-      .lte("view_date", endDate),
-    supabase
-      .from("article_events")
-      .select("event_type")
-      .eq("post_id", postId)
-      .gte("event_date", startDate)
-      .lte("event_date", endDate),
+    fetchBreakdownsWithFallback(supabase, {
+      startDate,
+      endDate,
+      postId,
+      includeEvents: true,
+    }),
   ]);
 
   if (
     postMissingRawViews ||
     isMissingSchemaError(dailyRes.error) ||
-    isMissingSchemaError(sessionsRes.error) ||
-    isMissingSchemaError(eventsRes.error)
+    breakdowns.missingSchema
   ) {
     return {
       range,
@@ -571,24 +734,12 @@ export async function getPostAnalytics(
   }
 
   const dailyRows = (dailyRes.data ?? []) as unknown as DailyRow[];
-  const sessionRows = (sessionsRes.data ?? []) as unknown as SessionBreakdownRow[];
-  const eventRows = (eventsRes.data ?? []) as unknown as { event_type: string }[];
 
   const { summary, timeseries, scrollFunnel } = aggregateWindowMetrics(
     dailyRows,
     startDate,
     dates
   );
-
-  const { trafficSources, topReferrers, devices } =
-    aggregateSessionBreakdowns(sessionRows);
-
-  const eventCounts = new Map<string, number>();
-  for (const row of eventRows) {
-    if (row.event_type) {
-      eventCounts.set(row.event_type, (eventCounts.get(row.event_type) ?? 0) + 1);
-    }
-  }
 
   return {
     range,
@@ -597,9 +748,9 @@ export async function getPostAnalytics(
     summary,
     timeseries,
     scrollFunnel,
-    trafficSources,
-    topReferrers,
-    devices,
-    eventsBreakdown: buildBreakdown(eventCounts),
+    trafficSources: breakdowns.trafficSources,
+    topReferrers: breakdowns.topReferrers,
+    devices: breakdowns.devices,
+    eventsBreakdown: breakdowns.eventsBreakdown,
   };
 }

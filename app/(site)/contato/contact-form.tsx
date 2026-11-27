@@ -7,7 +7,7 @@ import { Send, CheckCircle, AlertCircle, RotateCcw } from "lucide-react";
 import { submitContactForm, type ContactFormState } from "./actions";
 import { Button } from "@/components/ui/button";
 import { SITE_CONFIG } from "@/lib/site-config";
-import { trackContactLead } from "@/lib/tracking";
+import { getConsentState, trackContactLead } from "@/lib/tracking";
 import { cn } from "@/lib/utils";
 
 const initialState: ContactFormState = {
@@ -77,6 +77,20 @@ function ContactFormInner({ onReset }: { onReset: () => void }) {
   const [subjectInput, setSubjectInput] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState<string | null>(null);
   const [eventId] = useState(generateEventId);
+  const [analyticsConsent, setAnalyticsConsent] = useState(false);
+
+  useEffect(() => {
+    const syncConsent = () => {
+      setAnalyticsConsent(getConsentState() === "granted");
+    };
+    syncConsent();
+    window.addEventListener("ehs:consent-change", syncConsent);
+    window.addEventListener("ehs:consent-updated", syncConsent);
+    return () => {
+      window.removeEventListener("ehs:consent-change", syncConsent);
+      window.removeEventListener("ehs:consent-updated", syncConsent);
+    };
+  }, []);
 
   const name = nameInput ?? state.values?.name ?? "";
   const email = emailInput ?? state.values?.email ?? "";
@@ -137,6 +151,11 @@ function ContactFormInner({ onReset }: { onReset: () => void }) {
       <input type="hidden" name="fbclid" value={fbclid} />
       <input type="hidden" name="source_page" value={pathname} />
       <input type="hidden" name="event_id" value={eventId} />
+      <input
+        type="hidden"
+        name="analyticsConsent"
+        value={analyticsConsent ? "true" : "false"}
+      />
 
       {state.error && (
         <div

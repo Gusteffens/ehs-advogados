@@ -774,7 +774,7 @@ export function PostsTable({ posts, categories, authors }: PostsTableProps) {
         <div
           role="region"
           aria-label="Ações em lote"
-          className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 flex flex-wrap items-center justify-center gap-2 sm:gap-3 rounded-2xl bg-ink text-cream border border-gold/30 px-4 py-3 shadow-2xl max-w-[95vw]"
+          className="fixed bottom-5 left-1/2 lg:left-[calc(50%+8rem)] -translate-x-1/2 z-40 flex flex-wrap items-center justify-center gap-2 sm:gap-3 rounded-2xl bg-ink text-cream border border-gold/30 px-4 py-3 shadow-2xl max-w-[95vw]"
         >
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold pr-2 border-r border-forest-700">
             <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-gold text-ink px-1.5 text-[11px] font-bold tabular-nums">

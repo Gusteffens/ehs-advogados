@@ -177,17 +177,18 @@ export async function POST(request: Request): Promise<NextResponse> {
 
       let countRaw = true;
       const redis = getRedisClient();
+      const uniqueKey = `ehs:av:u:${payload.postId}:${dayBucket}:${visitorHash}`;
+      const rawThrottleKey = `ehs:av:r:${payload.postId}:${visitorHash}`;
+
+      // Fast-path read only — never persist dedup keys before DB RPC succeeds
       if (redis) {
         try {
-          const uniqueKey = `ehs:av:u:${payload.postId}:${dayBucket}:${visitorHash}`;
-          const rawThrottleKey = `ehs:av:r:${payload.postId}:${visitorHash}`;
-
-          const [uniqueSet, rawSet] = await Promise.all([
-            redis.set(uniqueKey, "1", { nx: true, ex: 86400 }),
-            redis.set(rawThrottleKey, "1", { nx: true, ex: 60 }),
+          const [uniqueExists, rawExists] = await Promise.all([
+            redis.get(uniqueKey),
+            redis.get(rawThrottleKey),
           ]);
 
-          countRaw = Boolean(uniqueSet) || Boolean(rawSet);
+          countRaw = !uniqueExists || !rawExists;
         } catch {
           // Fall back cleanly to DB UNIQUE(post_id, view_date, visitor_hash)
           countRaw = true;
@@ -208,8 +209,23 @@ export async function POST(request: Request): Promise<NextResponse> {
         p_count_raw: countRaw,
       });
 
-      if (error && !isMissingRpcError(error)) {
-        console.error("[analytics/collect] record_article_view failed:", error.message);
+      if (error) {
+        if (!isMissingRpcError(error)) {
+          console.error("[analytics/collect] record_article_view failed:", error.message);
+        }
+        return noContent();
+      }
+
+      // Persist Redis dedup/throttle keys only after the DB RPC succeeded
+      if (redis) {
+        try {
+          await Promise.all([
+            redis.set(uniqueKey, "1", { nx: true, ex: 86400 }),
+            redis.set(rawThrottleKey, "1", { nx: true, ex: 60 }),
+          ]);
+        } catch {
+          // Non-blocking: DB-level UNIQUE constraint remains authoritative
+        }
       }
 
       return noContent();

@@ -1,6 +1,7 @@
 "use server";
 
 import crypto from "crypto";
+import { revalidateTag } from "next/cache";
 import { headers } from "next/headers";
 import { after } from "next/server";
 import { z } from "zod";
@@ -213,6 +214,7 @@ export async function submitContactForm(
   }
 
   const eventId = parsed.data.event_id || crypto.randomUUID();
+  const analyticsConsent = formData.get("analyticsConsent") === "true";
 
   try {
     const headersList = await headers();
@@ -268,6 +270,7 @@ export async function submitContactForm(
           console.warn("Could not persist contact lead in Supabase:", leadError.message);
         } else if (leadRow?.id) {
           persistedLeadId = leadRow.id;
+          revalidateTag("admin-leads-count", "max");
         }
       }
     } catch (dbError) {
@@ -366,10 +369,10 @@ export async function submitContactForm(
       }
     });
 
-    // Enviar evento para a API de Conversões da Meta (CAPI) com deduplicação via event_id
-    const accessToken = process.env.META_PIXEL_ACCESS_TOKEN;
-    if (accessToken) {
-      const pixelId = process.env.META_PIXEL_ID || "2487931431710589";
+    // Enviar evento para a API de Conversões da Meta (CAPI) somente com consentimento LGPD explícito
+    const accessToken = process.env.META_PIXEL_ACCESS_TOKEN?.trim();
+    const pixelId = process.env.META_PIXEL_ID?.trim();
+    if (analyticsConsent && accessToken && pixelId) {
       const cleanEmail = parsed.data.email.toLowerCase();
       const emailHash = crypto.createHash("sha256").update(cleanEmail).digest("hex");
 

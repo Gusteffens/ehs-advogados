@@ -81,7 +81,10 @@ function formatCompactDate(dateStr: string): string {
 
 function escapeCsvCell(value: string | boolean | null | undefined): string {
   const str = value == null ? "" : String(value);
-  const sanitized = str.replace(/\r?\n/g, " ");
+  let sanitized = str.replace(/\r?\n/g, " ");
+  if (/^[=+\-@\t\r]/.test(sanitized)) {
+    sanitized = `'${sanitized}`;
+  }
   if (/[",;\n]/.test(sanitized)) {
     return `"${sanitized.replace(/"/g, '""')}"`;
   }
@@ -851,7 +854,7 @@ export function LeadsTable({
         <div
           role="region"
           aria-label="Ações em lote para leads selecionados"
-          className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-2xl rounded-2xl border border-gold/30 bg-ink px-4 py-3 text-cream shadow-2xl animate-slide-up"
+          className="fixed bottom-5 left-1/2 lg:left-[calc(50%+8rem)] -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-2xl rounded-2xl border border-gold/30 bg-ink px-4 py-3 text-cream shadow-2xl animate-slide-up"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">

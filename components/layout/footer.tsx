@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { FooterAdminLink } from "@/components/layout/footer-admin-link";
+import { CookiePreferencesButton } from "@/components/providers/cookie-consent-banner";
 import { SITE_CONFIG } from "@/lib/site-config";
 
 const quickLinks = [
@@ -187,6 +188,7 @@ export function Footer() {
             >
               Termos de Uso
             </Link>
+            <CookiePreferencesButton className="text-xs text-cream/65 hover:text-cream transition-colors cursor-pointer" />
           </div>
         </div>
       </Container>

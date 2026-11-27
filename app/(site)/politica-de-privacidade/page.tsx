@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
+import { CookiePreferencesButton } from "@/components/providers/cookie-consent-banner";
 import { SITE_CONFIG } from "@/lib/site-config";
 
 export const metadata: Metadata = {
@@ -255,11 +256,20 @@ export default function PoliticaDePrivacidadePage() {
                 (PostHog) e cookies/tags de mensuração de campanhas (Google Tag
                 Manager, Google Ads e Meta Pixel).
               </p>
-              <p className="mb-2">
+              <p className="mb-4">
                 Você pode bloquear ou limpar cookies a qualquer momento nas
                 configurações do seu navegador (Chrome, Firefox, Safari ou
                 Edge). A recusa de cookies essenciais pode impactar o
                 funcionamento de áreas restritas do site.
+              </p>
+              <p>
+                Você também pode alterar ou revogar seu consentimento para
+                cookies de análise e mensuração diretamente por aqui (LGPD,
+                Art. 8º, § 5º):{" "}
+                <CookiePreferencesButton className="text-gold-dark font-semibold underline underline-offset-2 hover:text-ink transition-colors cursor-pointer">
+                  Gerenciar preferências de cookies
+                </CookiePreferencesButton>
+                .
               </p>
             </div>
 
@@ -338,6 +348,30 @@ export default function PoliticaDePrivacidadePage() {
                     className="text-gold-dark underline underline-offset-2"
                   >
                     vercel.com/legal/privacy-policy
+                  </a>
+                </li>
+                <li>
+                  <strong>Supabase</strong> (banco de dados e armazenamento de
+                  arquivos) —{" "}
+                  <a
+                    href="https://supabase.com/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gold-dark underline underline-offset-2"
+                  >
+                    supabase.com/privacy
+                  </a>
+                </li>
+                <li>
+                  <strong>Upstash Redis</strong> (proteção contra abuso,
+                  limitação de taxa e deduplicação) —{" "}
+                  <a
+                    href="https://upstash.com/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gold-dark underline underline-offset-2"
+                  >
+                    upstash.com/privacy
                   </a>
                 </li>
               </ul>

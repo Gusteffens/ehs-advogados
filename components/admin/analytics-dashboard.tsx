@@ -100,8 +100,6 @@ export function AnalyticsDashboard({
   // Load per-article drilldown whenever selectedArticle or range changes
   useEffect(() => {
     if (!selectedArticle) {
-      setPostDetail(null);
-      setDetailError(null);
       return;
     }
 
@@ -109,38 +107,52 @@ export function AnalyticsDashboard({
     const controller = new AbortController();
     detailAbortRef.current = controller;
 
-    setIsLoadingDetail(true);
-    setDetailError(null);
+    let active = true;
 
-    fetch(
-      `/api/admin/analytics/posts/${encodeURIComponent(selectedArticle.postId)}?range=${range}`,
-      {
-        signal: controller.signal,
-        cache: "no-store",
-      }
-    )
-      .then(async (res) => {
+    async function loadArticleDetail(postId: string) {
+      await Promise.resolve();
+      if (!active) return;
+
+      setPostDetail(null);
+      setIsLoadingDetail(true);
+      setDetailError(null);
+
+      try {
+        const res = await fetch(
+          `/api/admin/analytics/posts/${encodeURIComponent(postId)}?range=${range}`,
+          {
+            signal: controller.signal,
+            cache: "no-store",
+          }
+        );
         if (!res.ok) {
-          throw new Error(`Não foi possível carregar os dados do artigo (${res.status}).`);
+          throw new Error(
+            `Não foi possível carregar os dados do artigo (${res.status}).`
+          );
         }
-        return (await res.json()) as PostAnalyticsResponse;
-      })
-      .then((json) => {
-        setPostDetail(json);
-      })
-      .catch((err: unknown) => {
+        const json = (await res.json()) as PostAnalyticsResponse;
+        if (active) {
+          setPostDetail(json);
+        }
+      } catch (err: unknown) {
         if ((err as { name?: string })?.name === "AbortError") return;
+        if (!active) return;
         const msg = getErrorMessage(err);
         setDetailError(msg);
         toast.error("Erro no detalhamento do artigo", msg);
-      })
-      .finally(() => {
-        if (detailAbortRef.current === controller) {
+      } finally {
+        if (active && detailAbortRef.current === controller) {
           setIsLoadingDetail(false);
         }
-      });
+      }
+    }
 
-    return () => controller.abort();
+    void loadArticleDetail(selectedArticle.postId);
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [selectedArticle, range, toast]);
 
   // Close drilldown drawer on Escape + lock body scroll

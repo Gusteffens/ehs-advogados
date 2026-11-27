@@ -1,13 +1,34 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
+import { Ratelimit } from "@upstash/ratelimit";
 import { z } from "zod";
 import { requireAdminApi } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getRedisClient } from "@/lib/upstash";
+import { extractClientIp } from "@/lib/analytics/visitor";
 
 export const dynamic = "force-dynamic";
 
 const STORAGE_BUCKET = "blog-covers";
 const MAX_IMAGE_UPLOAD_BYTES = 15 * 1024 * 1024; // 15MB
+
+let uploadSignRatelimitInstance: Ratelimit | null = null;
+
+function getUploadSignRatelimit(): Ratelimit | null {
+  const redis = getRedisClient();
+  if (!redis) {
+    return null;
+  }
+
+  uploadSignRatelimitInstance ??= new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(30, "10 m"),
+    analytics: false,
+    prefix: "@ehs/admin-upload-sign",
+  });
+
+  return uploadSignRatelimitInstance;
+}
 
 const ALLOWED_IMAGE_MIME_TO_EXT: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -45,6 +66,26 @@ export async function POST(request: Request): Promise<NextResponse> {
   const gate = await requireAdminApi();
   if (!gate.ok) {
     return gate.response;
+  }
+
+  const ratelimit = getUploadSignRatelimit();
+  if (ratelimit) {
+    try {
+      const ip = extractClientIp(request.headers);
+      const { success } = await ratelimit.limit(`${gate.session.userId}:${ip}`);
+      if (!success) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              "Muitas solicitações de upload. Aguarde alguns minutos e tente novamente.",
+          },
+          { status: 429, headers: { "Cache-Control": "no-store" } }
+        );
+      }
+    } catch {
+      // Do not block admin uploads if Redis is temporarily unavailable
+    }
   }
 
   let body: unknown;
