@@ -26,7 +26,7 @@ const ALLOWED_IMAGE_MIME_TO_EXT: Record<string, string> = {
   "image/avif": "avif",
 };
 
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_IMAGE_BYTES = 15 * 1024 * 1024; // 15 MB
 const STORAGE_BUCKET = "blog-covers";
 
 const uuidSchema = z.string().uuid("Identificador inválido.");
@@ -420,7 +420,7 @@ async function uploadBlogImage(
   }
 
   if (file.size <= 0 || file.size > MAX_IMAGE_BYTES) {
-    return { ok: false, error: "A imagem deve ter no máximo 5 MB." };
+    return { ok: false, error: "A imagem deve ter no máximo 15 MB." };
   }
 
   const supabase = createAdminClient();

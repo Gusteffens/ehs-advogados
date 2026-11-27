@@ -16,6 +16,11 @@ const supabaseHostname = getSupabaseHostname();
 const supabaseOrigin = `https://${supabaseHostname}`;
 
 const nextConfig: NextConfig = {
+    experimental: {
+        serverActions: {
+            bodySizeLimit: "16mb",
+        },
+    },
     images: {
         formats: ["image/avif", "image/webp"],
         deviceSizes: [640, 750, 828, 1080, 1200, 1920],

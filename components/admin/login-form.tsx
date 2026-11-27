@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   ArrowRight,
@@ -25,7 +24,6 @@ export function LoginForm({
   redirectUrl = "/admin",
   showDevHint = false,
 }: LoginFormProps) {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -72,8 +70,7 @@ export function LoginForm({
         return;
       }
 
-      router.push(data.redirectTo || "/admin");
-      router.refresh();
+      window.location.assign(data.redirectTo || "/admin");
     } catch {
       setError("Erro de conexão ao autenticar. Tente novamente.");
       setIsSubmitting(false);

@@ -7,6 +7,9 @@ export interface TocHeading {
   level: 2 | 3;
 }
 
+const ALLOWED_FIGURE_LAYOUTS = new Set(["normal", "wide", "full"]);
+const ALLOWED_CALLOUT_TYPES = new Set(["attention", "legal", "summary"]);
+
 const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   allowedTags: [
     "p",
@@ -19,6 +22,9 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
     "u",
     "s",
     "del",
+    "mark",
+    "sup",
+    "sub",
     "h2",
     "h3",
     "h4",
@@ -30,12 +36,26 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
     "pre",
     "a",
     "img",
+    "figure",
+    "figcaption",
+    "div",
+    "aside",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
   ],
   allowedAttributes: {
     a: ["href", "target", "rel"],
-    img: ["src", "alt", "title"],
+    img: ["src", "alt", "title", "width", "height", "loading"],
     h2: ["id"],
     h3: ["id"],
+    figure: ["data-editorial-image", "data-layout"],
+    div: ["data-callout"],
+    th: ["colspan", "rowspan"],
+    td: ["colspan", "rowspan"],
   },
   allowedSchemes: ["https", "http", "mailto", "tel"],
   allowedSchemesByTag: {
@@ -51,6 +71,50 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
         nextAttribs.rel = "noopener noreferrer";
       } else {
         delete nextAttribs.target;
+      }
+
+      return {
+        tagName,
+        attribs: nextAttribs,
+      };
+    },
+    img: (tagName: string, attribs: Record<string, string>) => {
+      const nextAttribs: Record<string, string> = {
+        ...attribs,
+        loading: "lazy",
+      };
+
+      return {
+        tagName,
+        attribs: nextAttribs,
+      };
+    },
+    figure: (tagName: string, attribs: Record<string, string>) => {
+      const nextAttribs: Record<string, string> = {};
+
+      if (attribs["data-editorial-image"] === "true") {
+        nextAttribs["data-editorial-image"] = "true";
+        const layout = attribs["data-layout"];
+        nextAttribs["data-layout"] =
+          layout && ALLOWED_FIGURE_LAYOUTS.has(layout) ? layout : "normal";
+      } else if (
+        attribs["data-layout"] &&
+        ALLOWED_FIGURE_LAYOUTS.has(attribs["data-layout"])
+      ) {
+        nextAttribs["data-layout"] = attribs["data-layout"];
+      }
+
+      return {
+        tagName,
+        attribs: nextAttribs,
+      };
+    },
+    div: (tagName: string, attribs: Record<string, string>) => {
+      const nextAttribs: Record<string, string> = {};
+      const callout = attribs["data-callout"];
+
+      if (callout && ALLOWED_CALLOUT_TYPES.has(callout)) {
+        nextAttribs["data-callout"] = callout;
       }
 
       return {

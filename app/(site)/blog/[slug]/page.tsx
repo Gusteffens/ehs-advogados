@@ -22,6 +22,7 @@ import { ReadingProgress } from "@/components/blog/reading-progress";
 import { TableOfContents } from "@/components/blog/table-of-contents";
 import { ShareButtons } from "@/components/blog/share-buttons";
 import { BlogContextualCta } from "@/components/blog/contextual-cta";
+import { ArticleImageLightbox } from "@/components/blog/article-image-lightbox";
 import { processBlogHtmlWithToc } from "@/lib/sanitize-blog-html";
 import { SITE_CONFIG, TEAM_IMAGES } from "@/lib/site-config";
 import type { BlogAuthorSummary, BlogCategorySummary } from "@/types/blog";
@@ -202,138 +203,162 @@ export default async function ArticlePage({ params }: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
       <PostViewTracker postId={post.id} />
+      <ArticleImageLightbox />
 
-      <section className="pt-32 pb-20 lg:pt-40 lg:pb-24 bg-ink relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-gold/5 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-0 left-[35%] w-px h-32 bg-gradient-to-b from-gold/15 to-transparent pointer-events-none" />
+      <section
+        className={`pt-32 lg:pt-40 bg-ink relative overflow-hidden ${
+          post.cover_image_url ? "pb-24 lg:pb-32" : "pb-16 lg:pb-24"
+        }`}
+      >
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gold/6 rounded-full blur-[130px] pointer-events-none" />
+        <div className="absolute bottom-0 left-[32%] w-px h-36 bg-gradient-to-b from-gold/20 to-transparent pointer-events-none" />
 
         <Container className="relative">
-          {/* Breadcrumbs */}
-          <nav
-            aria-label="Breadcrumb"
-            className="flex flex-wrap items-center gap-1.5 text-xs text-cream/55 mb-6"
-          >
-            <Link
-              href="/"
-              className="hover:text-gold transition-colors no-underline"
+          <div className="max-w-4xl mx-auto">
+            {/* Breadcrumbs */}
+            <nav
+              aria-label="Breadcrumb"
+              className="flex flex-wrap items-center gap-1.5 text-xs text-cream/55 mb-6"
             >
-              Início
-            </Link>
-            <ChevronRight className="h-3.5 w-3.5 text-cream/30" />
-            <Link
-              href="/blog"
-              className="hover:text-gold transition-colors no-underline"
-            >
-              Blog
-            </Link>
-            {categoryName && categorySlug && (
-              <>
-                <ChevronRight className="h-3.5 w-3.5 text-cream/30" />
-                <Link
-                  href={`/blog?categoria=${encodeURIComponent(categorySlug)}`}
-                  className="hover:text-gold transition-colors no-underline"
+              <Link
+                href="/"
+                className="hover:text-gold transition-colors no-underline"
+              >
+                Início
+              </Link>
+              <ChevronRight className="h-3.5 w-3.5 text-cream/30" />
+              <Link
+                href="/blog"
+                className="hover:text-gold transition-colors no-underline"
+              >
+                Blog
+              </Link>
+              {categoryName && categorySlug && (
+                <>
+                  <ChevronRight className="h-3.5 w-3.5 text-cream/30" />
+                  <Link
+                    href={`/blog?categoria=${encodeURIComponent(categorySlug)}`}
+                    className="hover:text-gold transition-colors no-underline"
+                  >
+                    {categoryName}
+                  </Link>
+                </>
+              )}
+              <ChevronRight className="h-3.5 w-3.5 text-cream/30" />
+              <span className="text-cream/85 line-clamp-1 max-w-[260px] sm:max-w-md">
+                {post.title}
+              </span>
+            </nav>
+
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-7">
+              <Link
+                href="/blog"
+                className="inline-flex items-center gap-2 text-sm text-cream/60 hover:text-gold transition-colors no-underline group"
+              >
+                <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+                Voltar ao Blog
+              </Link>
+
+              {categoryName && (
+                <span
+                  className="inline-flex items-center px-3.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-[0.12em] text-ink shadow-xs"
+                  style={{ backgroundColor: categoryColor }}
                 >
                   {categoryName}
-                </Link>
-              </>
-            )}
-            <ChevronRight className="h-3.5 w-3.5 text-cream/30" />
-            <span className="text-cream/85 line-clamp-1 max-w-[260px] sm:max-w-md">
+                </span>
+              )}
+            </div>
+
+            <h1 className="font-display text-3xl sm:text-4xl lg:text-[3.15rem] font-bold text-cream leading-[1.12] tracking-[-0.02em] mb-6">
               {post.title}
-            </span>
-          </nav>
+            </h1>
 
-          <Link
-            href="/blog"
-            className="inline-flex items-center gap-2 text-sm text-cream/60 hover:text-gold transition-colors mb-8 no-underline group"
-          >
-            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
-            Voltar ao Blog
-          </Link>
+            {post.excerpt && (
+              <p className="font-body text-base sm:text-lg lg:text-[1.175rem] text-cream/78 leading-relaxed max-w-3xl mb-8 pl-4 sm:pl-5 border-l-2 border-gold/45">
+                {post.excerpt}
+              </p>
+            )}
 
-          {categoryName && (
-            <div className="mb-5">
-              <span
-                className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold text-ink"
-                style={{ backgroundColor: categoryColor }}
-              >
-                {categoryName}
-              </span>
-            </div>
-          )}
-
-          <h1 className="font-display text-3xl sm:text-4xl lg:text-[2.85rem] font-bold text-cream leading-tight max-w-3xl mb-8">
-            {post.title}
-          </h1>
-
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <div className="flex items-center gap-2.5">
-              <div className="relative h-10 w-10 rounded-full overflow-hidden shrink-0 ring-2 ring-gold/20">
-                <Image
-                  src={authorPhoto ?? authorPhotoFallback}
-                  alt={authorName}
-                  fill
-                  sizes="40px"
-                  className="object-cover object-center"
-                />
+            <div className="pt-6 border-t border-cream/12 flex flex-wrap items-center gap-x-4 gap-y-3">
+              <div className="flex items-center gap-3">
+                <div className="relative h-11 w-11 rounded-full overflow-hidden shrink-0 ring-2 ring-gold/25">
+                  <Image
+                    src={authorPhoto ?? authorPhotoFallback}
+                    alt={authorName}
+                    fill
+                    sizes="44px"
+                    className="object-cover object-center"
+                  />
+                </div>
+                <div className="leading-tight">
+                  <span className="block text-cream text-sm font-semibold">
+                    {authorName}
+                  </span>
+                  {author?.oab && (
+                    <span className="block text-xs text-gold/85 mt-0.5">
+                      {author.oab}
+                    </span>
+                  )}
+                </div>
               </div>
-              <span className="text-cream text-sm font-medium">
-                {authorName}
-              </span>
+
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-cream/65">
+                {publishedDate && (
+                  <>
+                    <span className="hidden sm:inline text-cream/25">·</span>
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 text-gold/70" />
+                      {publishedDate}
+                    </span>
+                  </>
+                )}
+
+                {updatedDate && (
+                  <>
+                    <span className="text-cream/25">·</span>
+                    <span className="flex items-center gap-1.5 text-gold/90">
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      Atualizado em {updatedDate}
+                    </span>
+                  </>
+                )}
+
+                <span className="text-cream/25">·</span>
+                <span className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-gold/70" />
+                  {post.reading_time_min ?? 5} min de leitura
+                </span>
+
+                {typeof post.views === "number" && post.views > 0 && (
+                  <>
+                    <span className="text-cream/25">·</span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-cream/8 border border-cream/12 px-2.5 py-0.5 text-xs text-cream/80">
+                      <Eye className="h-3.5 w-3.5 text-gold/80" />
+                      {post.views}{" "}
+                      {post.views === 1 ? "visualização" : "visualizações"}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
-
-            {publishedDate && (
-              <>
-                <span className="text-cream/25 text-sm">·</span>
-                <span className="flex items-center gap-1.5 text-sm text-cream/65">
-                  <Calendar className="h-3.5 w-3.5" />
-                  {publishedDate}
-                </span>
-              </>
-            )}
-
-            {updatedDate && (
-              <>
-                <span className="text-cream/25 text-sm">·</span>
-                <span className="flex items-center gap-1.5 text-sm text-gold/90">
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Atualizado em {updatedDate}
-                </span>
-              </>
-            )}
-
-            <span className="text-cream/25 text-sm">·</span>
-            <span className="flex items-center gap-1.5 text-sm text-cream/65">
-              <Clock className="h-3.5 w-3.5" />
-              {post.reading_time_min ?? 5} min de leitura
-            </span>
-
-            {typeof post.views === "number" && post.views > 0 && (
-              <>
-                <span className="text-cream/25 text-sm">·</span>
-                <span className="flex items-center gap-1.5 text-sm text-cream/65">
-                  <Eye className="h-3.5 w-3.5" />
-                  {post.views}{" "}
-                  {post.views === 1 ? "visualização" : "visualizações"}
-                </span>
-              </>
-            )}
           </div>
         </Container>
       </section>
 
       {post.cover_image_url && (
-        <section className="bg-cream pt-10 pb-4">
+        <section className="bg-cream -mt-12 lg:-mt-16 pb-4 relative z-10">
           <Container>
-            <div className="relative aspect-video max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-lg border border-forest-600/10">
-              <Image
-                src={post.cover_image_url}
-                alt={post.title}
-                fill
-                priority
-                className="object-cover object-center"
-                sizes="(max-width: 768px) 100vw, 896px"
-              />
+            <div className="max-w-4xl mx-auto rounded-2xl bg-cream-light p-1.5 sm:p-2 shadow-xl shadow-ink/12 border border-forest-600/12">
+              <div className="relative aspect-video rounded-xl overflow-hidden bg-primary">
+                <Image
+                  src={post.cover_image_url}
+                  alt={post.title}
+                  fill
+                  priority
+                  className="object-cover object-center"
+                  sizes="(max-width: 768px) 100vw, 896px"
+                />
+              </div>
             </div>
           </Container>
         </section>
@@ -342,29 +367,47 @@ export default async function ArticlePage({ params }: PageProps) {
       <section className="py-12 lg:py-16 bg-cream">
         <Container>
           {hasToc ? (
-            <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-10 items-start">
+            <div className="max-w-[1120px] mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_272px] gap-10 xl:gap-14 items-start article-layout--with-toc">
               <div className="min-w-0">
                 <TableOfContents headings={headings} variant="mobile" />
                 <article
                   data-article-content
-                  className="prose-editorial max-w-2xl"
+                  className="prose-editorial blog-prose prose-editorial--article max-w-[68ch]"
                   dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
                 />
-                <div className="mt-10 pt-6 border-t border-forest-600/15 max-w-2xl">
-                  <ShareButtons postId={post.id} title={post.title} url={postUrl} />
+                <div className="mt-12 pt-7 border-t border-forest-600/15 max-w-[68ch]">
+                  <ShareButtons
+                    postId={post.id}
+                    title={post.title}
+                    url={postUrl}
+                  />
                 </div>
               </div>
-              <TableOfContents headings={headings} variant="desktop" />
+
+              <div className="hidden lg:block sticky top-28 space-y-5">
+                <TableOfContents headings={headings} variant="desktop" />
+                <div className="rounded-2xl bg-white/80 border border-forest-600/12 p-5 backdrop-blur-xs">
+                  <ShareButtons
+                    postId={post.id}
+                    title={post.title}
+                    url={postUrl}
+                  />
+                </div>
+              </div>
             </div>
           ) : (
-            <div className="max-w-2xl mx-auto">
+            <div className="max-w-[68ch] mx-auto article-layout--centered">
               <article
                 data-article-content
-                className="prose-editorial"
+                className="prose-editorial blog-prose prose-editorial--article"
                 dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
               />
-              <div className="mt-10 pt-6 border-t border-forest-600/15">
-                <ShareButtons postId={post.id} title={post.title} url={postUrl} />
+              <div className="mt-12 pt-7 border-t border-forest-600/15">
+                <ShareButtons
+                  postId={post.id}
+                  title={post.title}
+                  url={postUrl}
+                />
               </div>
             </div>
           )}
@@ -374,7 +417,7 @@ export default async function ArticlePage({ params }: PageProps) {
       {/* Author box */}
       <section className="pb-16 bg-cream">
         <Container>
-          <div className="max-w-2xl mx-auto rounded-2xl bg-primary p-6 sm:p-8">
+          <div className="max-w-[68ch] mx-auto rounded-2xl bg-primary p-6 sm:p-8 border border-gold/15 shadow-lg shadow-ink/10">
             <div className="flex flex-col sm:flex-row items-start gap-5">
               <div className="relative h-20 w-20 rounded-2xl overflow-hidden shrink-0 shadow-lg ring-2 ring-gold/10">
                 <Image

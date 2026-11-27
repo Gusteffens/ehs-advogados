@@ -9,17 +9,36 @@ import {
   Trash2,
   UploadCloud,
 } from "lucide-react";
-import { uploadCoverImage } from "@/app/actions/blog";
+import {
+  ACCEPTED_IMAGE_TYPES,
+  MAX_IMAGE_UPLOAD_BYTES,
+  MAX_IMAGE_UPLOAD_LABEL,
+  uploadAdminImage,
+} from "@/lib/admin/upload-client";
 import { useToast } from "@/components/admin/toast-provider";
 import { cn, getErrorMessage } from "@/lib/utils";
 
-const ALLOWED_IMAGE_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/avif",
-]);
-const MAX_COVER_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
+function normalizeAcceptedTypes(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.filter((item): item is string => typeof item === "string");
+  }
+  if (typeof raw === "string") {
+    return raw
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  if (raw instanceof Set) {
+    return Array.from(raw).filter(
+      (item): item is string => typeof item === "string"
+    );
+  }
+  return ["image/jpeg", "image/png", "image/webp", "image/avif"];
+}
+
+const ACCEPTED_LIST = normalizeAcceptedTypes(ACCEPTED_IMAGE_TYPES);
+const ALLOWED_IMAGE_TYPES = new Set(ACCEPTED_LIST);
+const ACCEPT_ATTR = ACCEPTED_LIST.join(",");
 
 interface CoverUploadZoneProps {
   value: string;
@@ -36,47 +55,50 @@ export function CoverUploadZone({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const handleFile = async (file: File) => {
     setError(null);
 
     if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
-      const msg =
-        "Formato inválido. Utilize JPEG, PNG, WebP ou AVIF.";
+      const msg = "Formato inválido. Utilize JPEG, PNG, WebP ou AVIF.";
       setError(msg);
       toast.error("Formato não suportado", msg);
       return;
     }
 
-    if (file.size <= 0 || file.size > MAX_COVER_IMAGE_BYTES) {
-      const msg = "A imagem de capa deve ter no máximo 5 MB.";
+    if (file.size <= 0 || file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      const msg = `A imagem de capa deve ter no máximo ${MAX_IMAGE_UPLOAD_LABEL}.`;
       setError(msg);
       toast.error("Arquivo muito grande", msg);
       return;
     }
 
     setIsUploading(true);
+    setUploadProgress(5);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await uploadCoverImage(formData);
+      const res = await uploadAdminImage(file, "covers", (pct) => {
+        setUploadProgress(Math.max(5, Math.min(100, Math.round(pct))));
+      });
 
-      if (!res.ok || !res.url) {
-        const msg = res.error ?? "Não foi possível enviar a imagem de capa.";
+      if (!res.ok) {
+        const msg = res.error || "Não foi possível enviar a imagem de capa.";
         setError(msg);
         toast.error("Falha no upload da capa", msg);
         return;
       }
 
+      setUploadProgress(100);
       onChange(res.url);
-      toast.success("Capa enviada", "A imagem foi carregada no servidor.");
+      toast.success("Capa enviada", "A imagem foi carregada com sucesso.");
     } catch (err: unknown) {
       const msg = getErrorMessage(err, "Erro ao enviar a imagem de capa.");
       setError(msg);
       toast.error("Erro no upload", msg);
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
       if (inputRef.current) {
         inputRef.current.value = "";
       }
@@ -143,7 +165,7 @@ export function CoverUploadZone({
         ref={inputRef}
         id="cover-upload-input"
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/avif"
+        accept={ACCEPT_ATTR}
         onChange={handleInputChange}
         disabled={disabled || isUploading}
         className="hidden"
@@ -173,9 +195,19 @@ export function CoverUploadZone({
           />
 
           {isUploading ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-ink/65 backdrop-blur-xs text-cream">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 bg-ink/75 backdrop-blur-xs text-cream px-5">
               <Loader2 className="h-6 w-6 animate-spin text-gold" />
-              <span className="text-xs font-medium">Enviando nova capa...</span>
+              <div className="w-full max-w-[200px] space-y-1.5 text-center">
+                <span className="text-xs font-medium tabular-nums">
+                  Enviando nova capa... {uploadProgress}%
+                </span>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-cream/20">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-gold to-champagne-200 transition-all duration-200"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
             </div>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center gap-2 bg-ink/50 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -220,19 +252,25 @@ export function CoverUploadZone({
             isDragging
               ? "border-gold bg-champagne-50/80 scale-[1.01]"
               : "border-forest-200 bg-cream-light/60 hover:border-gold-dark/60 hover:bg-cream/60",
-            (disabled || isUploading) && "opacity-60 pointer-events-none"
+            (disabled || isUploading) && "opacity-75 pointer-events-none"
           )}
         >
           {isUploading ? (
-            <>
+            <div className="w-full max-w-[220px] flex flex-col items-center">
               <Loader2 className="h-7 w-7 text-gold-dark animate-spin mb-2" />
-              <p className="text-xs font-semibold text-ink">
-                Enviando imagem...
+              <p className="text-xs font-semibold text-ink tabular-nums">
+                Enviando imagem... {uploadProgress}%
               </p>
-              <p className="text-[11px] text-forest-600/80 mt-0.5">
-                Aguarde um instante
+              <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-forest-100">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-gold-dark via-gold to-forest-700 transition-all duration-200"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              <p className="text-[11px] text-forest-600/80 mt-1.5">
+                Upload direto em alta velocidade
               </p>
-            </>
+            </div>
           ) : (
             <>
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cream border border-forest-100 text-forest-700 mb-2.5">
@@ -242,7 +280,7 @@ export function CoverUploadZone({
                 Arraste uma imagem ou clique para enviar
               </p>
               <p className="text-[11px] text-forest-600/80 mt-1">
-                JPEG, PNG, WebP ou AVIF · Máximo 5 MB · 16:9 recomendado
+                JPEG, PNG, WebP ou AVIF · Até {MAX_IMAGE_UPLOAD_LABEL} · 16:9 recomendado
               </p>
             </>
           )}

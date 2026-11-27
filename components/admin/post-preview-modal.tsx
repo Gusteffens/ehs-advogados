@@ -144,7 +144,7 @@ export function PostPreviewModal({
         </div>
 
         {/* Scrollable editorial preview body */}
-        <div className="overflow-y-auto flex-1">
+        <div className="overflow-y-auto overflow-x-hidden flex-1">
           {/* Article Hero matching public blog */}
           <div className="bg-ink px-6 sm:px-10 py-10">
             {categoryName && (
@@ -204,7 +204,7 @@ export function PostPreviewModal({
             )}
 
             <article
-              className="prose-editorial max-w-2xl mx-auto"
+              className="blog-prose prose-editorial max-w-2xl mx-auto"
               dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
             />
 
