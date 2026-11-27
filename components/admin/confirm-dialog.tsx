@@ -3,13 +3,16 @@
 import { useEffect } from "react";
 import { AlertTriangle, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface ConfirmDialogProps {
   open: boolean;
   title: string;
   description: string;
   confirmLabel?: string;
+  pendingLabel?: string;
   cancelLabel?: string;
+  variant?: "danger" | "default";
   isPending?: boolean;
   error?: string | null;
   onConfirm: () => void;
@@ -21,7 +24,9 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel = "Confirmar",
+  pendingLabel = "Processando...",
   cancelLabel = "Cancelar",
+  variant = "danger",
   isPending = false,
   error = null,
   onConfirm,
@@ -42,9 +47,11 @@ export function ConfirmDialog({
 
   if (!open) return null;
 
+  const isDanger = variant === "danger";
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 backdrop-blur-xs p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/65 backdrop-blur-xs p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
@@ -54,12 +61,19 @@ export function ConfirmDialog({
       }}
     >
       <div
-        className="w-full max-w-md rounded-2xl bg-white border border-forest-200 p-6 shadow-2xl"
+        className="w-full max-w-md rounded-2xl bg-white border border-forest-200/90 p-6 shadow-2xl animate-scale-in"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
+            <div
+              className={cn(
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                isDanger
+                  ? "bg-red-50 text-red-600 border border-red-100"
+                  : "bg-champagne-100 text-gold-dark border border-champagne-200"
+              )}
+            >
               <AlertTriangle className="h-5 w-5" />
             </div>
             <h2
@@ -110,10 +124,15 @@ export function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={isPending}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors disabled:opacity-60"
+            className={cn(
+              "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-60",
+              isDanger
+                ? "bg-red-600 text-white hover:bg-red-700"
+                : "bg-ink text-gold hover:bg-primary"
+            )}
           >
             {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            {isPending ? "Excluindo..." : confirmLabel}
+            {isPending ? pendingLabel : confirmLabel}
           </button>
         </div>
       </div>

@@ -87,7 +87,6 @@ export default function RootLayout({
           name="facebook-domain-verification"
           content="kxbgdskgibhycq5k5kytetkuvyuf3t"
         />
-        <link rel="preconnect" href="https://clerk.ehsadvogados.com.br" />
         <JsonLd />
       </head>
       <body className="antialiased grain-overlay">{children}</body>

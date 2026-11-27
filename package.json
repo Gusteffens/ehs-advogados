@@ -17,7 +17,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@clerk/nextjs": "^7.0.1",
     "@fontsource/mulish": "^5.2.8",
     "@fontsource/unna": "^5.2.8",
     "@supabase/supabase-js": "^2.98.0",

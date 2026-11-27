@@ -6,6 +6,7 @@ let redisInstance: Redis | null = null;
 let contactRatelimitInstance: Ratelimit | null = null;
 let blogActionRatelimitInstance: Ratelimit | null = null;
 let viewRatelimitInstance: Ratelimit | null = null;
+let analyticsCollectRatelimitInstance: Ratelimit | null = null;
 
 function getRedis(): Redis | null {
   const url = process.env.UPSTASH_REDIS_REST_URL;
@@ -17,6 +18,13 @@ function getRedis(): Redis | null {
 
   redisInstance ??= new Redis({ url, token });
   return redisInstance;
+}
+
+/**
+ * Shared Redis client for server-side deduplication and caching.
+ */
+export function getRedisClient(): Redis | null {
+  return getRedis();
 }
 
 /**
@@ -74,4 +82,23 @@ export function getViewRatelimit(): Ratelimit | null {
   });
 
   return viewRatelimitInstance;
+}
+
+/**
+ * Rate limiter for first-party article analytics beacons: 60 requests per minute per IP.
+ */
+export function getAnalyticsCollectRatelimit(): Ratelimit | null {
+  const redis = getRedis();
+  if (!redis) {
+    return null;
+  }
+
+  analyticsCollectRatelimitInstance ??= new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(60, "1 m"),
+    analytics: false,
+    prefix: "@ehs/analytics-collect",
+  });
+
+  return analyticsCollectRatelimitInstance;
 }

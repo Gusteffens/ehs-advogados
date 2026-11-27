@@ -32,6 +32,7 @@ export type Post = {
   published_at: string | null;
   reading_time_min: number | null;
   views: number;
+  raw_views: number;
   created_at: string;
   updated_at: string | null;
 };
@@ -95,6 +96,7 @@ export type PostInsert = {
   published_at?: string | null;
   reading_time_min?: number | null;
   views?: number;
+  raw_views?: number;
   created_at?: string;
   updated_at?: string | null;
 };
@@ -128,6 +130,156 @@ export type ContactLeadInsert = {
 };
 
 export type ContactLeadUpdate = Partial<Omit<ContactLeadInsert, "id" | "created_at">>;
+
+export type ArticleViewDedup = {
+  post_id: string;
+  view_date: string;
+  visitor_hash: string;
+  created_at: string;
+};
+
+export type ArticleViewDedupInsert = {
+  post_id: string;
+  view_date: string;
+  visitor_hash: string;
+  created_at?: string;
+};
+
+export type ArticleSession = {
+  id: string;
+  session_id: string;
+  post_id: string;
+  view_date: string;
+  visitor_hash: string;
+  is_unique: boolean;
+  engaged_seconds: number;
+  max_scroll_pct: number;
+  reached_25: boolean;
+  reached_50: boolean;
+  reached_75: boolean;
+  reached_100: boolean;
+  device_type: "desktop" | "mobile" | "tablet";
+  referrer_domain: string | null;
+  traffic_source: "direct" | "organic" | "social" | "referral" | "campaign" | "internal";
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ArticleSessionInsert = {
+  id?: string;
+  session_id: string;
+  post_id: string;
+  view_date: string;
+  visitor_hash: string;
+  is_unique?: boolean;
+  engaged_seconds?: number;
+  max_scroll_pct?: number;
+  reached_25?: boolean;
+  reached_50?: boolean;
+  reached_75?: boolean;
+  reached_100?: boolean;
+  device_type?: "desktop" | "mobile" | "tablet";
+  referrer_domain?: string | null;
+  traffic_source?: "direct" | "organic" | "social" | "referral" | "campaign" | "internal";
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type ArticleEvent = {
+  id: string;
+  post_id: string;
+  session_id: string | null;
+  event_date: string;
+  event_type:
+    | "share_whatsapp"
+    | "share_linkedin"
+    | "share_copy"
+    | "cta_whatsapp"
+    | "cta_primary"
+    | "related_click";
+  target: string | null;
+  device_type: "desktop" | "mobile" | "tablet";
+  created_at: string;
+};
+
+export type ArticleEventInsert = {
+  id?: string;
+  post_id: string;
+  session_id?: string | null;
+  event_date: string;
+  event_type:
+    | "share_whatsapp"
+    | "share_linkedin"
+    | "share_copy"
+    | "cta_whatsapp"
+    | "cta_primary"
+    | "related_click";
+  target?: string | null;
+  device_type?: "desktop" | "mobile" | "tablet";
+  created_at?: string;
+};
+
+export type ArticleAnalyticsDaily = {
+  post_id: string;
+  metric_date: string;
+  raw_views: number;
+  unique_views: number;
+  engaged_sessions: number;
+  total_engaged_seconds: number;
+  scroll_25_count: number;
+  scroll_50_count: number;
+  scroll_75_count: number;
+  scroll_100_count: number;
+  share_clicks: number;
+  cta_clicks: number;
+};
+
+export type ArticleAnalyticsDailyInsert = {
+  post_id: string;
+  metric_date: string;
+  raw_views?: number;
+  unique_views?: number;
+  engaged_sessions?: number;
+  total_engaged_seconds?: number;
+  scroll_25_count?: number;
+  scroll_50_count?: number;
+  scroll_75_count?: number;
+  scroll_100_count?: number;
+  share_clicks?: number;
+  cta_clicks?: number;
+};
+
+export type AdminUser = {
+  id: string;
+  email: string;
+  name: string;
+  password_hash: string;
+  author_id: string | null;
+  is_active: boolean;
+  last_login_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminUserInsert = {
+  id?: string;
+  email: string;
+  name: string;
+  password_hash: string;
+  author_id?: string | null;
+  is_active?: boolean;
+  last_login_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type AdminUserUpdate = Partial<Omit<AdminUserInsert, "id" | "created_at">>;
 
 export type Database = {
   public: {
@@ -177,6 +329,68 @@ export type Database = {
         Update: ContactLeadUpdate;
         Relationships: [];
       };
+      article_view_dedup: {
+        Row: ArticleViewDedup;
+        Insert: ArticleViewDedupInsert;
+        Update: Partial<ArticleViewDedupInsert>;
+        Relationships: [
+          {
+            foreignKeyName: "article_view_dedup_post_id_fkey";
+            columns: ["post_id"];
+            isOneToOne: false;
+            referencedRelation: "posts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      article_sessions: {
+        Row: ArticleSession;
+        Insert: ArticleSessionInsert;
+        Update: Partial<ArticleSessionInsert>;
+        Relationships: [
+          {
+            foreignKeyName: "article_sessions_post_id_fkey";
+            columns: ["post_id"];
+            isOneToOne: false;
+            referencedRelation: "posts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      article_events: {
+        Row: ArticleEvent;
+        Insert: ArticleEventInsert;
+        Update: Partial<ArticleEventInsert>;
+        Relationships: [
+          {
+            foreignKeyName: "article_events_post_id_fkey";
+            columns: ["post_id"];
+            isOneToOne: false;
+            referencedRelation: "posts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      article_analytics_daily: {
+        Row: ArticleAnalyticsDaily;
+        Insert: ArticleAnalyticsDailyInsert;
+        Update: Partial<ArticleAnalyticsDailyInsert>;
+        Relationships: [
+          {
+            foreignKeyName: "article_analytics_daily_post_id_fkey";
+            columns: ["post_id"];
+            isOneToOne: false;
+            referencedRelation: "posts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      admin_users: {
+        Row: AdminUser;
+        Insert: AdminUserInsert;
+        Update: AdminUserUpdate;
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -185,6 +399,45 @@ export type Database = {
       increment_post_views: {
         Args: {
           p_post_id: string;
+        };
+        Returns: undefined;
+      };
+      record_article_view: {
+        Args: {
+          p_post_id: string;
+          p_session_id: string;
+          p_view_date: string;
+          p_visitor_hash: string;
+          p_device_type?: string;
+          p_referrer_domain?: string | null;
+          p_traffic_source?: string;
+          p_utm_source?: string | null;
+          p_utm_medium?: string | null;
+          p_utm_campaign?: string | null;
+          p_count_raw?: boolean;
+        };
+        Returns: {
+          counted_unique: boolean;
+          counted_raw: boolean;
+        }[];
+      };
+      record_article_engagement: {
+        Args: {
+          p_post_id: string;
+          p_session_id: string;
+          p_engaged_seconds: number;
+          p_max_scroll_pct: number;
+        };
+        Returns: undefined;
+      };
+      record_article_event: {
+        Args: {
+          p_post_id: string;
+          p_session_id: string | null;
+          p_event_date: string;
+          p_event_type: string;
+          p_target?: string | null;
+          p_device_type?: string;
         };
         Returns: undefined;
       };

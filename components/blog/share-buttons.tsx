@@ -2,13 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, Link2, Linkedin, MessageCircle } from "lucide-react";
+import { trackArticleEvent } from "@/lib/analytics/client-beacon";
 
 interface ShareButtonsProps {
+  postId?: string;
   title: string;
   url: string;
 }
 
-export function ShareButtons({ title, url }: ShareButtonsProps) {
+export function ShareButtons({ postId, title, url }: ShareButtonsProps) {
   const [copied, setCopied] = useState(false);
   const timeoutRef = useRef<number | null>(null);
 
@@ -27,6 +29,9 @@ export function ShareButtons({ title, url }: ShareButtonsProps) {
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
+      if (postId) {
+        trackArticleEvent({ postId, eventType: "share_copy", target: url });
+      }
       if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
       timeoutRef.current = window.setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -44,6 +49,11 @@ export function ShareButtons({ title, url }: ShareButtonsProps) {
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Compartilhar no WhatsApp"
+        onClick={() => {
+          if (postId) {
+            trackArticleEvent({ postId, eventType: "share_whatsapp", target: url });
+          }
+        }}
         className="inline-flex items-center gap-1.5 rounded-xl border border-forest-200 bg-white px-3 py-1.5 text-xs font-medium text-ink hover:border-forest-600/40 hover:bg-forest-50 transition-colors no-underline"
       >
         <MessageCircle className="h-3.5 w-3.5 text-forest-600" />
@@ -54,6 +64,11 @@ export function ShareButtons({ title, url }: ShareButtonsProps) {
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Compartilhar no LinkedIn"
+        onClick={() => {
+          if (postId) {
+            trackArticleEvent({ postId, eventType: "share_linkedin", target: url });
+          }
+        }}
         className="inline-flex items-center gap-1.5 rounded-xl border border-forest-200 bg-white px-3 py-1.5 text-xs font-medium text-ink hover:border-forest-600/40 hover:bg-forest-50 transition-colors no-underline"
       >
         <Linkedin className="h-3.5 w-3.5 text-forest-600" />

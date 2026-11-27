@@ -346,11 +346,12 @@ export default async function ArticlePage({ params }: PageProps) {
               <div className="min-w-0">
                 <TableOfContents headings={headings} variant="mobile" />
                 <article
+                  data-article-content
                   className="prose-editorial max-w-2xl"
                   dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
                 />
                 <div className="mt-10 pt-6 border-t border-forest-600/15 max-w-2xl">
-                  <ShareButtons title={post.title} url={postUrl} />
+                  <ShareButtons postId={post.id} title={post.title} url={postUrl} />
                 </div>
               </div>
               <TableOfContents headings={headings} variant="desktop" />
@@ -358,11 +359,12 @@ export default async function ArticlePage({ params }: PageProps) {
           ) : (
             <div className="max-w-2xl mx-auto">
               <article
+                data-article-content
                 className="prose-editorial"
                 dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
               />
               <div className="mt-10 pt-6 border-t border-forest-600/15">
-                <ShareButtons title={post.title} url={postUrl} />
+                <ShareButtons postId={post.id} title={post.title} url={postUrl} />
               </div>
             </div>
           )}
@@ -509,6 +511,7 @@ export default async function ArticlePage({ params }: PageProps) {
 
       {/* Contextual CTA */}
       <BlogContextualCta
+        postId={post.id}
         postTitle={post.title}
         postSlug={post.slug}
         categorySlug={categorySlug}

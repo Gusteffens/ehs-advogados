@@ -1,32 +1,48 @@
-import { NextResponse } from 'next/server';
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import { isAdmin } from '@/lib/auth';
+import { NextRequest, NextResponse } from "next/server";
+import {
+  ADMIN_SESSION_COOKIE,
+  verifySessionToken,
+} from "@/lib/auth-session";
 
-const isProtectedRoute = createRouteMatcher(['/admin(.*)']);
+export async function proxy(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
 
-export default clerkMiddleware(async (auth, req) => {
-    // Bloqueia /sign-up — cadastro é apenas via Clerk Dashboard
-    if (req.nextUrl.pathname.startsWith('/sign-up')) {
-      return NextResponse.redirect(new URL('/', req.url))
+  // Bloqueia /sign-up — novos administradores são cadastrados internamente no painel
+  if (pathname === "/sign-up" || pathname.startsWith("/sign-up/")) {
+    return NextResponse.redirect(new URL("/sign-in", request.url));
+  }
+
+  if (pathname === "/api/admin" || pathname.startsWith("/api/admin/")) {
+    const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+    const session = await verifySessionToken(token);
+    if (!session) {
+      return NextResponse.json(
+        { error: "Não autenticado" },
+        { status: 401, headers: { "Cache-Control": "no-store" } }
+      );
     }
+    return NextResponse.next();
+  }
 
-    if (isProtectedRoute(req)) {
-        await auth.protect({
-            unauthenticatedUrl: new URL('/sign-in', req.url).toString(),
-        });
-
-        const { sessionClaims } = await auth();
-        if (!isAdmin(sessionClaims)) {
-            return NextResponse.redirect(new URL('/unauthorized', req.url));
-        }
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+    const session = await verifySessionToken(token);
+    if (!session) {
+      const signInUrl = new URL("/sign-in", request.url);
+      const destination = `${pathname}${search}`;
+      if (destination.startsWith("/admin")) {
+        signInUrl.searchParams.set("redirect_url", destination);
+      }
+      return NextResponse.redirect(signInUrl);
     }
-}, {
-    signInUrl: '/sign-in',
-});
+    return NextResponse.next();
+  }
+
+  return NextResponse.next();
+}
+
+export default proxy;
 
 export const config = {
-    matcher: [
-        '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-        '/(api|trpc)(.*)',
-    ],
+  matcher: ["/admin/:path*", "/api/admin/:path*", "/sign-up", "/sign-up/:path*"],
 };

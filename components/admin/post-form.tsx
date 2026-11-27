@@ -1,52 +1,56 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   ArrowLeft,
+  CheckCircle2,
   ChevronDown,
+  CircleDot,
   ExternalLink,
   Eye,
   Loader2,
   RotateCcw,
   Save,
+  Send,
   Trash2,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TiptapEditor } from "@/components/admin/tiptap-editor";
+import { CoverUploadZone } from "@/components/admin/cover-upload-zone";
+import { PostSeoPanel } from "@/components/admin/post-seo-panel";
+import { PostPreviewModal } from "@/components/admin/post-preview-modal";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
-import {
-  createPost,
-  deletePost,
-  updatePost,
-  uploadCoverImage,
-} from "@/app/actions/blog";
-import { SITE_CONFIG, TEAM_IMAGES } from "@/lib/site-config";
-import { cn, getErrorMessage, isNextRedirectError } from "@/lib/utils";
-import type { AuthorOption, EditablePost, PostStatus } from "@/types/blog";
-
-const ALLOWED_IMAGE_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/avif",
-]);
-const MAX_COVER_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
+import { useToast } from "@/components/admin/toast-provider";
+import { createPost, deletePost, updatePost } from "@/app/actions/blog";
+import { TEAM_IMAGES } from "@/lib/site-config";
+import { cn, getErrorMessage } from "@/lib/utils";
+import type {
+  AuthorOption,
+  CategoryOption,
+  EditablePost,
+  PostStatus,
+} from "@/types/blog";
 
 const inputClasses =
-  "w-full rounded-xl border border-forest-200 bg-white px-4 py-3 text-ink text-sm placeholder:text-forest-600/70 focus:outline-none focus:ring-2 focus:ring-champagne-500/50 focus:border-gold transition-all";
+  "w-full rounded-xl border border-forest-200 bg-white px-4 py-3 text-ink text-sm placeholder:text-forest-600/65 focus:outline-none focus:ring-2 focus:ring-champagne-500/50 focus:border-gold transition-all";
 
-export interface CategorySelectOption {
-  id: string;
-  name: string;
-}
+export type CategorySelectOption = CategoryOption;
 
 interface PostFormProps {
   mode: "create" | "edit";
-  categories: CategorySelectOption[];
+  categories: CategoryOption[];
   authors: AuthorOption[];
   initialPost?: EditablePost;
 }
@@ -59,7 +63,23 @@ interface LocalDraftPayload {
   content: string;
   status: PostStatus;
   authorId: string;
+  coverUrl: string;
+  publishedAtLocal: string;
+  tags: string[];
   savedAt: number;
+}
+
+interface SavedSnapshot {
+  title: string;
+  slug: string;
+  category: string;
+  excerpt: string;
+  content: string;
+  status: PostStatus;
+  authorId: string;
+  coverUrl: string;
+  publishedAtLocal: string;
+  tagsKey: string;
 }
 
 type PendingAction = "draft" | "published" | "save" | "delete" | null;
@@ -84,7 +104,28 @@ function hasVisibleHtmlContent(html: string): boolean {
   return /<img\b/i.test(html);
 }
 
-const displaySiteHost = SITE_CONFIG.url.replace(/^https?:\/\//, "");
+function countWords(html: string): number {
+  const plain = html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .trim();
+  return plain ? plain.split(/\s+/).filter(Boolean).length : 0;
+}
+
+function toDatetimeLocalValue(iso?: string | null): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function formatTimeHHMM(date: Date): string {
+  return date.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export function PostForm({
   mode,
@@ -92,13 +133,20 @@ export function PostForm({
   authors,
   initialPost,
 }: PostFormProps) {
+  const router = useRouter();
+  const { toast } = useToast();
+
   const isEdit = mode === "edit" && Boolean(initialPost);
   const draftStorageKey = `ehs-post-draft:${isEdit && initialPost ? initialPost.id : "new"}`;
 
   const initialAuthorId =
-    initialPost?.author_id ?? (mode === "create" ? authors[0]?.id ?? "" : "");
+    initialPost?.author_id ?? (mode === "create" ? (authors[0]?.id ?? "") : "");
   const initialStatus: PostStatus =
     initialPost?.status === "published" ? "published" : "draft";
+  const initialPublishedAtLocal = toDatetimeLocalValue(
+    initialPost?.published_at
+  );
+  const initialTags = initialPost?.tags ?? [];
 
   const [title, setTitle] = useState(initialPost?.title ?? "");
   const [slug, setSlug] = useState(initialPost?.slug ?? "");
@@ -108,11 +156,36 @@ export function PostForm({
   const [content, setContent] = useState(initialPost?.content ?? "");
   const [editorResetKey, setEditorResetKey] = useState(0);
   const [status, setStatus] = useState<PostStatus>(initialStatus);
-  const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState(
-    initialPost?.cover_image_url ?? ""
-  );
+  const [coverUrl, setCoverUrl] = useState(initialPost?.cover_image_url ?? "");
   const [authorId, setAuthorId] = useState(initialAuthorId);
+  const [publishedAtLocal, setPublishedAtLocal] = useState(
+    initialPublishedAtLocal
+  );
+  const [tags, setTags] = useState<string[]>(initialTags);
+
+  const [savedSnapshot, setSavedSnapshot] = useState<SavedSnapshot>({
+    title: initialPost?.title ?? "",
+    slug: initialPost?.slug ?? "",
+    category: initialPost?.category_id ?? "",
+    excerpt: initialPost?.excerpt ?? "",
+    content: initialPost?.content ?? "",
+    status: initialStatus,
+    authorId: initialAuthorId,
+    coverUrl: initialPost?.cover_image_url ?? "",
+    publishedAtLocal: initialPublishedAtLocal,
+    tagsKey: initialTags.join("|"),
+  });
+
+  const [liveSlug, setLiveSlug] = useState(initialPost?.slug ?? "");
+  const [livePublishedStatus, setLivePublishedStatus] =
+    useState<PostStatus>(initialStatus);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(() => {
+    if (initialPost?.updated_at) {
+      const d = new Date(initialPost.updated_at);
+      if (!Number.isNaN(d.getTime())) return formatTimeHHMM(d);
+    }
+    return null;
+  });
 
   const [recoveredDraft, setRecoveredDraft] =
     useState<LocalDraftPayload | null>(null);
@@ -123,21 +196,20 @@ export function PostForm({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const objectUrlRef = useRef<string | null>(null);
   const isSubmittingRef = useRef(false);
 
   const isDirty = useMemo(() => {
     return (
-      title !== (initialPost?.title ?? "") ||
-      slug !== (initialPost?.slug ?? "") ||
-      category !== (initialPost?.category_id ?? "") ||
-      excerpt !== (initialPost?.excerpt ?? "") ||
-      content !== (initialPost?.content ?? "") ||
-      status !== initialStatus ||
-      authorId !== initialAuthorId ||
-      coverFile !== null ||
-      coverPreview !== (initialPost?.cover_image_url ?? "")
+      title !== savedSnapshot.title ||
+      slug !== savedSnapshot.slug ||
+      category !== savedSnapshot.category ||
+      excerpt !== savedSnapshot.excerpt ||
+      content !== savedSnapshot.content ||
+      status !== savedSnapshot.status ||
+      authorId !== savedSnapshot.authorId ||
+      coverUrl !== savedSnapshot.coverUrl ||
+      publishedAtLocal !== savedSnapshot.publishedAtLocal ||
+      tags.join("|") !== savedSnapshot.tagsKey
     );
   }, [
     title,
@@ -147,12 +219,13 @@ export function PostForm({
     content,
     status,
     authorId,
-    coverFile,
-    coverPreview,
-    initialPost,
-    initialStatus,
-    initialAuthorId,
+    coverUrl,
+    publishedAtLocal,
+    tags,
+    savedSnapshot,
   ]);
+
+  const wordCount = useMemo(() => countWords(content), [content]);
 
   // Check for existing localStorage draft on mount
   useEffect(() => {
@@ -192,13 +265,16 @@ export function PostForm({
           content,
           status,
           authorId,
+          coverUrl,
+          publishedAtLocal,
+          tags,
           savedAt: Date.now(),
         };
         window.localStorage.setItem(draftStorageKey, JSON.stringify(payload));
       } catch {
         // Ignore storage quota errors
       }
-    }, 1000);
+    }, 900);
 
     return () => window.clearTimeout(timer);
   }, [
@@ -210,6 +286,9 @@ export function PostForm({
     content,
     status,
     authorId,
+    coverUrl,
+    publishedAtLocal,
+    tags,
     draftStorageKey,
   ]);
 
@@ -227,34 +306,14 @@ export function PostForm({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isDirty]);
 
-  // Revoke any created Object URL on unmount
-  useEffect(() => {
-    return () => {
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current);
-        objectUrlRef.current = null;
-      }
-    };
-  }, []);
-
-  // Close preview modal on Escape
-  useEffect(() => {
-    if (!previewOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setPreviewOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [previewOpen]);
-
-  const clearLocalDraft = () => {
+  const clearLocalDraft = useCallback(() => {
     try {
       window.localStorage.removeItem(draftStorageKey);
     } catch {
       // Ignore storage errors
     }
     setRecoveredDraft(null);
-  };
+  }, [draftStorageKey]);
 
   const handleRestoreDraft = () => {
     if (!recoveredDraft) return;
@@ -266,113 +325,175 @@ export function PostForm({
     setContent(recoveredDraft.content);
     setStatus(recoveredDraft.status);
     setAuthorId(recoveredDraft.authorId);
+    if (typeof recoveredDraft.coverUrl === "string") {
+      setCoverUrl(recoveredDraft.coverUrl);
+    }
+    if (typeof recoveredDraft.publishedAtLocal === "string") {
+      setPublishedAtLocal(recoveredDraft.publishedAtLocal);
+    }
+    if (Array.isArray(recoveredDraft.tags)) {
+      setTags(recoveredDraft.tags);
+    }
     setEditorResetKey((prev) => prev + 1);
     setRecoveredDraft(null);
+    toast.info("Rascunho restaurado", "As alterações locais foram recuperadas.");
   };
 
-  const handleCoverChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleSubmit = useCallback(
+    (targetStatus: PostStatus, actionKey: PendingAction) => {
+      setErrorMessage(null);
 
-    setErrorMessage(null);
-
-    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
-      setErrorMessage(
-        "Formato de imagem inválido. Utilize JPEG, PNG, WebP ou AVIF."
-      );
-      event.target.value = "";
-      return;
-    }
-
-    if (file.size <= 0 || file.size > MAX_COVER_IMAGE_BYTES) {
-      setErrorMessage("A imagem de capa deve ter no máximo 5 MB.");
-      event.target.value = "";
-      return;
-    }
-
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-    }
-
-    const nextObjectUrl = URL.createObjectURL(file);
-    objectUrlRef.current = nextObjectUrl;
-    setCoverFile(file);
-    setCoverPreview(nextObjectUrl);
-  };
-
-  const handleRemoveCover = () => {
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-      objectUrlRef.current = null;
-    }
-    setCoverFile(null);
-    setCoverPreview("");
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const handleSubmit = (targetStatus: PostStatus, actionKey: PendingAction) => {
-    setErrorMessage(null);
-
-    if (!title.trim()) {
-      setErrorMessage("O título do artigo é obrigatório.");
-      return;
-    }
-
-    if (!hasVisibleHtmlContent(content)) {
-      setErrorMessage("O conteúdo do artigo não pode estar vazio.");
-      return;
-    }
-
-    isSubmittingRef.current = true;
-    setPendingAction(actionKey);
-
-    startTransition(async () => {
-      try {
-        let finalCoverUrl = coverPreview.startsWith("blob:")
-          ? ""
-          : coverPreview;
-
-        if (coverFile) {
-          const uploadData = new FormData();
-          uploadData.append("file", coverFile);
-          finalCoverUrl = await uploadCoverImage(uploadData);
-        }
-
-        const formData = new FormData();
-        formData.append("title", title.trim());
-        formData.append("slug", slug.trim());
-        formData.append("content", content);
-        formData.append("excerpt", excerpt.trim());
-        formData.append("category_id", category);
-        formData.append("status", targetStatus);
-        formData.append("cover_image_url", finalCoverUrl);
-        if (authorId) {
-          formData.append("author_id", authorId);
-        }
-
-        clearLocalDraft();
-
-        if (isEdit && initialPost) {
-          await updatePost(initialPost.id, formData);
-        } else {
-          await createPost(formData);
-        }
-      } catch (error: unknown) {
-        if (isNextRedirectError(error)) return;
-
-        isSubmittingRef.current = false;
-        console.error(error);
-        setErrorMessage(
-          (isEdit
-            ? "Erro ao atualizar o artigo: "
-            : "Erro ao salvar o artigo: ") + getErrorMessage(error)
-        );
-        setPendingAction(null);
+      if (!title.trim()) {
+        const msg = "O título do artigo é obrigatório.";
+        setErrorMessage(msg);
+        toast.error("Campo obrigatório", msg);
+        return;
       }
-    });
-  };
+
+      if (!hasVisibleHtmlContent(content)) {
+        const msg = "O conteúdo do artigo não pode estar vazio.";
+        setErrorMessage(msg);
+        toast.error("Conteúdo vazio", msg);
+        return;
+      }
+
+      isSubmittingRef.current = true;
+      setPendingAction(actionKey);
+
+      startTransition(async () => {
+        try {
+          const formData = new FormData();
+          formData.append("title", title.trim());
+          formData.append("slug", slug.trim());
+          formData.append("content", content);
+          formData.append("excerpt", excerpt.trim());
+          formData.append("category_id", category);
+          formData.append("status", targetStatus);
+          formData.append("cover_image_url", coverUrl);
+          if (authorId) {
+            formData.append("author_id", authorId);
+          }
+          if (publishedAtLocal) {
+            const parsedDate = new Date(publishedAtLocal);
+            if (!Number.isNaN(parsedDate.getTime())) {
+              formData.append("published_at", parsedDate.toISOString());
+            }
+          }
+          if (tags.length > 0 || (initialPost?.tags?.length ?? 0) > 0) {
+            formData.append("tags", JSON.stringify(tags));
+          }
+
+          if (isEdit && initialPost) {
+            const res = await updatePost(initialPost.id, formData);
+            if (!res.ok) {
+              const msg = res.error ?? "Não foi possível atualizar o artigo.";
+              setErrorMessage(msg);
+              toast.error("Erro ao salvar", msg);
+              return;
+            }
+
+            // CRITICAL: Clear localStorage draft ONLY after confirmed server save
+            clearLocalDraft();
+
+            const nextSlug = res.slug ?? slug;
+            const nextPubLocal = res.published_at
+              ? toDatetimeLocalValue(res.published_at)
+              : publishedAtLocal;
+
+            setSlug(nextSlug);
+            setLiveSlug(nextSlug);
+            setStatus(targetStatus);
+            setLivePublishedStatus(targetStatus);
+            setPublishedAtLocal(nextPubLocal);
+            setLastSavedAt(formatTimeHHMM(new Date()));
+            setSavedSnapshot({
+              title: title.trim(),
+              slug: nextSlug,
+              category,
+              excerpt: excerpt.trim(),
+              content,
+              status: targetStatus,
+              authorId,
+              coverUrl,
+              publishedAtLocal: nextPubLocal,
+              tagsKey: tags.join("|"),
+            });
+
+            toast.success(
+              targetStatus === "published"
+                ? "Artigo salvo e publicado"
+                : "Alterações salvas",
+              "Você pode continuar editando normalmente."
+            );
+            router.refresh();
+          } else {
+            const res = await createPost(formData);
+            if (!res.ok || !res.id) {
+              const msg = res.error ?? "Não foi possível criar o artigo.";
+              setErrorMessage(msg);
+              toast.error("Erro ao criar artigo", msg);
+              return;
+            }
+
+            // CRITICAL: Clear localStorage draft ONLY after confirmed server save
+            clearLocalDraft();
+
+            toast.success(
+              targetStatus === "published"
+                ? "Artigo publicado!"
+                : "Rascunho criado!",
+              "Redirecionando para o editor..."
+            );
+            router.push(`/admin/posts/${res.id}`);
+          }
+        } catch (error: unknown) {
+          console.error(error);
+          const msg =
+            (isEdit
+              ? "Erro ao atualizar o artigo: "
+              : "Erro ao salvar o artigo: ") + getErrorMessage(error);
+          setErrorMessage(msg);
+          toast.error("Falha na operação", msg);
+        } finally {
+          isSubmittingRef.current = false;
+          setPendingAction(null);
+        }
+      });
+    },
+    [
+      title,
+      slug,
+      content,
+      excerpt,
+      category,
+      coverUrl,
+      authorId,
+      publishedAtLocal,
+      tags,
+      isEdit,
+      initialPost,
+      clearLocalDraft,
+      toast,
+      router,
+    ]
+  );
+
+  // Ctrl+S / Cmd+S shortcut to save
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        if (!isPending) {
+          handleSubmit(
+            isEdit ? status : "draft",
+            isEdit ? "save" : "draft"
+          );
+        }
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleSubmit, isEdit, status, isPending]);
 
   const handleConfirmDelete = () => {
     if (!initialPost) return;
@@ -382,14 +503,24 @@ export function PostForm({
 
     startTransition(async () => {
       try {
-        clearLocalDraft();
-        await deletePost(initialPost.id);
-      } catch (error: unknown) {
-        if (isNextRedirectError(error)) return;
+        const res = await deletePost(initialPost.id);
+        if (!res.ok) {
+          const msg = res.error ?? "Não foi possível excluir o artigo.";
+          setDeleteError(msg);
+          toast.error("Erro ao excluir", msg);
+          return;
+        }
 
-        isSubmittingRef.current = false;
+        clearLocalDraft();
+        toast.success("Artigo excluído", `"${initialPost.title}" foi removido.`);
+        router.push("/admin/posts");
+      } catch (error: unknown) {
         console.error(error);
-        setDeleteError("Erro ao excluir: " + getErrorMessage(error));
+        const msg = "Erro ao excluir: " + getErrorMessage(error);
+        setDeleteError(msg);
+        toast.error("Erro ao excluir", msg);
+      } finally {
+        isSubmittingRef.current = false;
         setPendingAction(null);
       }
     });
@@ -399,62 +530,78 @@ export function PostForm({
   const selectedAuthorPhoto = selectedAuthor?.slug
     ? (TEAM_IMAGES[selectedAuthor.slug] ?? "/images/logo-ehs-monogram.png")
     : null;
-  const selectedCategoryName =
-    categories.find((c) => c.id === category)?.name ?? null;
+  const selectedCategory = categories.find((c) => c.id === category);
 
   return (
-    <div className="max-w-5xl mx-auto pt-28 lg:pt-0">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-        <div className="flex items-center gap-4">
+    <div className="max-w-6xl mx-auto">
+      {/* Studio Top Bar */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6 pb-5 border-b border-forest-100">
+        <div className="flex items-start sm:items-center gap-3.5 min-w-0">
           <Link
             href="/admin/posts"
             aria-label="Voltar para postagens"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-forest-200 text-forest-600 hover:text-ink hover:bg-cream transition-all no-underline"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-forest-200 bg-white text-forest-600 hover:text-ink hover:bg-cream transition-all no-underline"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <div>
-            <h1 className="font-display text-2xl font-bold text-ink">
-              {isEdit ? "Editar Artigo" : "Novo Artigo"}
-            </h1>
-            {isEdit && initialPost ? (
-              <div className="flex items-center gap-2 mt-1">
-                <span
-                  className={cn(
-                    "inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider",
-                    status === "published"
-                      ? "bg-forest-100 text-forest-800"
-                      : "bg-champagne-200/70 text-champagne-800"
-                  )}
-                >
-                  {status === "published" ? "Publicado" : "Rascunho"}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="font-display text-2xl font-bold text-ink">
+                {isEdit ? "Estúdio Editorial" : "Novo Artigo"}
+              </h1>
+              <span
+                className={cn(
+                  "inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider",
+                  status === "published"
+                    ? "bg-forest-100 text-forest-800"
+                    : "bg-champagne-200/80 text-champagne-900"
+                )}
+              >
+                {status === "published" ? "Publicado" : "Rascunho"}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs">
+              {isDirty ? (
+                <span className="inline-flex items-center gap-1.5 text-amber-700 font-medium">
+                  <CircleDot className="h-3 w-3 animate-pulse" />
+                  Alterações não salvas
                 </span>
-                {initialPost.status === "published" && (
+              ) : lastSavedAt ? (
+                <span className="inline-flex items-center gap-1.5 text-forest-600">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                  Salvo às {lastSavedAt}
+                </span>
+              ) : (
+                <span className="text-forest-600/80">
+                  Atalho Ctrl+S para salvar rapidamente
+                </span>
+              )}
+
+              {isEdit && livePublishedStatus === "published" && liveSlug && (
+                <>
+                  <span className="text-forest-300">·</span>
                   <Link
-                    href={`/blog/${initialPost.slug}`}
-                    className="flex items-center gap-1 text-xs text-gold-dark hover:text-ink no-underline transition-colors"
+                    href={`/blog/${liveSlug}`}
+                    className="inline-flex items-center gap-1 text-gold-dark hover:text-ink font-medium no-underline transition-colors"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
                     <ExternalLink className="h-3 w-3" />
                     Ver no site
                   </Link>
-                )}
-              </div>
-            ) : (
-              <p className="text-forest-600 text-xs mt-0.5">
-                Preencha os campos e escreva seu artigo
-              </p>
-            )}
+                </>
+              )}
+            </div>
           </div>
         </div>
 
+        {/* Action buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
           <Button
             type="button"
             variant="outline"
-            className="text-sm"
+            className="text-sm bg-white"
             onClick={() => setPreviewOpen(true)}
             disabled={isPending}
           >
@@ -497,7 +644,7 @@ export function PostForm({
               <Button
                 type="button"
                 variant="outline"
-                className="group text-sm"
+                className="group text-sm bg-white"
                 onClick={() => handleSubmit("draft", "draft")}
                 disabled={isPending}
               >
@@ -518,7 +665,7 @@ export function PostForm({
                 {pendingAction === "published" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Save className="h-4 w-4" />
+                  <Send className="h-4 w-4" />
                 )}
                 {pendingAction === "published" ? "Publicando..." : "Publicar"}
               </Button>
@@ -576,13 +723,14 @@ export function PostForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main editor column */}
-        <div className="lg:col-span-2 space-y-6">
-          <div>
+      {/* Two-column Chancery Studio Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-7">
+        {/* Main Editorial Canvas (8 cols) */}
+        <div className="lg:col-span-8 space-y-6">
+          <div className="rounded-2xl bg-white border border-forest-100 p-5 shadow-2xs">
             <label
               htmlFor="title"
-              className="block text-xs font-semibold uppercase tracking-[0.1em] text-forest-600 mb-2"
+              className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-forest-600 mb-2"
             >
               Título do Artigo
             </label>
@@ -597,40 +745,17 @@ export function PostForm({
                   setSlug(generateSlug(nextTitle));
                 }
               }}
-              placeholder="Ex: Novas regras para o crédito rural"
-              className={`${inputClasses} font-display text-lg`}
+              placeholder="Ex: Novas regras para o crédito rural em 2026"
+              className={`${inputClasses} font-display text-xl font-bold`}
             />
           </div>
 
           <div>
-            <label
-              htmlFor="slug"
-              className="block text-xs font-semibold uppercase tracking-[0.1em] text-forest-600 mb-2"
-            >
-              URL (Slug)
-            </label>
-            <div className="flex items-center rounded-xl border border-forest-200 bg-white overflow-hidden focus-within:ring-2 focus-within:ring-champagne-500/50 focus-within:border-gold transition-all">
-              <span className="px-3 text-xs text-forest-600/80 bg-cream/60 py-3 border-r border-forest-200 shrink-0">
-                /blog/
-              </span>
-              <input
-                id="slug"
-                type="text"
-                value={slug}
-                onChange={(event) => {
-                  setSlugTouched(true);
-                  setSlug(event.target.value);
-                }}
-                placeholder="url-do-artigo"
-                className="flex-1 px-3 py-3 text-sm text-ink placeholder:text-forest-600/70 focus:outline-none"
-              />
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-forest-600">
+                Corpo Editorial
+              </label>
             </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-[0.1em] text-forest-600 mb-2">
-              Conteúdo
-            </label>
             <TiptapEditor
               key={editorResetKey}
               content={content}
@@ -639,11 +764,11 @@ export function PostForm({
           </div>
         </div>
 
-        {/* Sidebar settings column */}
-        <div className="space-y-6">
+        {/* Right Inspector Sidebar (4 cols) */}
+        <div className="lg:col-span-4 space-y-5">
           {/* Status control */}
-          <div className="rounded-2xl bg-white border border-forest-100 p-5">
-            <span className="block text-xs font-semibold uppercase tracking-[0.1em] text-forest-600 mb-3">
+          <div className="rounded-2xl bg-white border border-forest-100 p-5 shadow-2xs">
+            <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-forest-600 mb-3">
               Status de Publicação
             </span>
             <div
@@ -659,7 +784,7 @@ export function PostForm({
                 className={cn(
                   "rounded-xl px-3 py-2.5 text-xs font-semibold transition-all border",
                   status === "draft"
-                    ? "bg-champagne-200/80 text-champagne-900 border-champagne-400 shadow-xs"
+                    ? "bg-champagne-200/80 text-champagne-900 border-champagne-400 shadow-2xs"
                     : "bg-white text-forest-600 border-forest-200 hover:bg-cream/60"
                 )}
               >
@@ -673,7 +798,7 @@ export function PostForm({
                 className={cn(
                   "rounded-xl px-3 py-2.5 text-xs font-semibold transition-all border",
                   status === "published"
-                    ? "bg-primary text-cream border-primary shadow-xs"
+                    ? "bg-primary text-cream border-primary shadow-2xs"
                     : "bg-white text-forest-600 border-forest-200 hover:bg-cream/60"
                 )}
               >
@@ -682,61 +807,23 @@ export function PostForm({
             </div>
             <p className="text-[11px] text-forest-600/80 mt-2.5">
               {status === "published"
-                ? "O artigo ficará visível publicamente no blog."
-                : "O artigo ficará salvo apenas no painel administrativo."}
+                ? "O artigo ficará visível publicamente no blog ao salvar."
+                : "Salvo apenas no painel administrativo; a data de publicação original é preservada."}
             </p>
           </div>
 
-          {/* Cover image */}
-          <div className="rounded-2xl bg-white border border-forest-100 p-5">
-            <div className="flex items-center justify-between mb-3">
-              <label
-                htmlFor="coverImage"
-                className="block text-xs font-semibold uppercase tracking-[0.1em] text-forest-600"
-              >
-                Imagem de Capa
-              </label>
-              {coverPreview && (
-                <button
-                  type="button"
-                  onClick={handleRemoveCover}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 transition-colors"
-                >
-                  <X className="h-3.5 w-3.5" />
-                  Remover
-                </button>
-              )}
-            </div>
-            <input
-              ref={fileInputRef}
-              id="coverImage"
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/avif"
-              onChange={handleCoverChange}
-              className="text-xs text-forest-600 w-full file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-cream/80 file:text-forest-700 hover:file:bg-cream"
-            />
-            <p className="text-[10px] text-forest-600/75 mt-2">
-              JPEG, PNG, WebP ou AVIF até 5 MB.
-            </p>
-            {coverPreview && (
-              <div className="mt-4 relative aspect-video w-full overflow-hidden rounded-xl border border-forest-100">
-                <Image
-                  src={coverPreview}
-                  alt="Prévia da imagem de capa"
-                  fill
-                  unoptimized={coverPreview.startsWith("blob:")}
-                  sizes="(max-width: 1024px) 100vw, 33vw"
-                  className="object-cover"
-                />
-              </div>
-            )}
-          </div>
+          {/* Immediate Drag-and-Drop Cover Upload */}
+          <CoverUploadZone
+            value={coverUrl}
+            onChange={setCoverUrl}
+            disabled={isPending}
+          />
 
           {/* Author */}
-          <div className="rounded-2xl bg-white border border-forest-100 p-5">
+          <div className="rounded-2xl bg-white border border-forest-100 p-5 shadow-2xs">
             <label
               htmlFor="author"
-              className="block text-xs font-semibold uppercase tracking-[0.1em] text-forest-600 mb-3"
+              className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-forest-600 mb-3"
             >
               Autor
             </label>
@@ -745,7 +832,7 @@ export function PostForm({
                 id="author"
                 value={authorId}
                 onChange={(event) => setAuthorId(event.target.value)}
-                className={`${inputClasses} appearance-none pr-10`}
+                className={`${inputClasses} py-2.5 appearance-none pr-10`}
               >
                 <option value="">(Conta logada)</option>
                 {authors.map((author) => (
@@ -757,170 +844,65 @@ export function PostForm({
               <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-forest-600" />
             </div>
             {selectedAuthor && selectedAuthorPhoto && (
-              <div className="mt-4 flex items-center gap-3 p-3 rounded-xl border border-forest-100 bg-cream/30">
-                <div className="relative w-10 h-10 overflow-hidden rounded-full border border-forest-200 shrink-0">
+              <div className="mt-3.5 flex items-center gap-3 p-2.5 rounded-xl border border-forest-100 bg-cream/40">
+                <div className="relative w-9 h-9 overflow-hidden rounded-full border border-forest-200 shrink-0">
                   <Image
                     src={selectedAuthorPhoto}
                     alt={selectedAuthor.full_name}
                     fill
-                    sizes="40px"
+                    sizes="36px"
                     className="object-cover object-top"
                   />
                 </div>
-                <span className="text-sm font-medium text-ink">
+                <span className="text-sm font-medium text-ink truncate">
                   {selectedAuthor.full_name}
                 </span>
               </div>
             )}
           </div>
 
-          {/* Category */}
-          <div className="rounded-2xl bg-white border border-forest-100 p-5">
-            <label
-              htmlFor="category"
-              className="block text-xs font-semibold uppercase tracking-[0.1em] text-forest-600 mb-3"
-            >
-              Categoria
-            </label>
-            <div className="relative">
-              <select
-                id="category"
-                value={category}
-                onChange={(event) => setCategory(event.target.value)}
-                className={`${inputClasses} appearance-none pr-10`}
-              >
-                <option value="">Selecione...</option>
-                {categories.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-forest-600" />
-            </div>
-          </div>
-
-          {/* Excerpt */}
-          <div className="rounded-2xl bg-white border border-forest-100 p-5">
-            <label
-              htmlFor="excerpt"
-              className="block text-xs font-semibold uppercase tracking-[0.1em] text-forest-600 mb-3"
-            >
-              Resumo
-            </label>
-            <textarea
-              id="excerpt"
-              value={excerpt}
-              onChange={(event) => setExcerpt(event.target.value)}
-              rows={4}
-              placeholder="Breve resumo do artigo para listagem e SEO..."
-              className={`${inputClasses} resize-none`}
-            />
-            <p className="text-[10px] text-forest-600/75 mt-2">
-              {excerpt.length}/160 caracteres recomendados para SEO
-            </p>
-          </div>
-
-          {/* Google SEO Preview */}
-          <div className="rounded-2xl bg-primary p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-gold/80 mb-3">
-              Prévia no Google
-            </p>
-            <div className="space-y-1">
-              <p className="text-blue-300 text-sm font-medium truncate">
-                {title || "Título do artigo"} | {SITE_CONFIG.name}
-              </p>
-              <p className="text-emerald-300 text-xs truncate">
-                {displaySiteHost}/blog/{slug || "url-do-artigo"}
-              </p>
-              <p className="text-cream/65 text-xs line-clamp-2">
-                {excerpt ||
-                  "O resumo do artigo será exibido aqui nos resultados de busca..."}
-              </p>
-            </div>
-          </div>
+          {/* SEO, Taxonomy, Published Date & SERP Preview */}
+          <PostSeoPanel
+            title={title}
+            slug={slug}
+            onSlugChange={(next) => {
+              setSlugTouched(true);
+              setSlug(next);
+            }}
+            onRegenerateSlug={() => {
+              setSlugTouched(true);
+              setSlug(generateSlug(title));
+            }}
+            excerpt={excerpt}
+            onExcerptChange={setExcerpt}
+            categoryId={category}
+            onCategoryChange={setCategory}
+            categories={categories}
+            coverUrl={coverUrl}
+            wordCount={wordCount}
+            publishedAtLocal={publishedAtLocal}
+            onPublishedAtLocalChange={setPublishedAtLocal}
+            tags={tags}
+            onTagsChange={setTags}
+          />
         </div>
       </div>
 
-      {/* Article Preview Modal */}
-      {previewOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/70 backdrop-blur-xs p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Pré-visualização do artigo"
-          onClick={() => setPreviewOpen(false)}
-        >
-          <div
-            className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-cream border border-forest-200 shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-ink text-cream border-b border-forest-800">
-              <div className="flex items-center gap-2">
-                <Eye className="h-4 w-4 text-gold" />
-                <span className="text-sm font-semibold">
-                  Pré-visualização do Artigo
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPreviewOpen(false)}
-                aria-label="Fechar pré-visualização"
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-cream/70 hover:text-cream hover:bg-forest-800 transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="bg-ink px-6 sm:px-10 py-10">
-              {selectedCategoryName && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gold text-ink mb-4">
-                  {selectedCategoryName}
-                </span>
-              )}
-              <h2 className="font-display text-3xl sm:text-4xl font-bold text-cream leading-tight mb-5">
-                {title || "Sem título"}
-              </h2>
-              <div className="flex items-center gap-3 text-sm text-cream/75">
-                {selectedAuthorPhoto && (
-                  <div className="relative h-9 w-9 rounded-full overflow-hidden shrink-0 ring-2 ring-gold/20">
-                    <Image
-                      src={selectedAuthorPhoto}
-                      alt={selectedAuthor?.full_name ?? "Autor"}
-                      fill
-                      sizes="36px"
-                      className="object-cover object-top"
-                    />
-                  </div>
-                )}
-                <span>{selectedAuthor?.full_name ?? "Equipe EHS"}</span>
-              </div>
-            </div>
-
-            <div className="px-6 sm:px-10 py-8 space-y-8">
-              {coverPreview && (
-                <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-forest-200 shadow-md">
-                  <Image
-                    src={coverPreview}
-                    alt={title || "Imagem de capa"}
-                    fill
-                    unoptimized={coverPreview.startsWith("blob:")}
-                    sizes="(max-width: 1024px) 100vw, 800px"
-                    className="object-cover"
-                  />
-                </div>
-              )}
-
-              <article
-                className="prose-editorial max-w-2xl mx-auto"
-                dangerouslySetInnerHTML={{
-                  __html: content || "<p>Sem conteúdo ainda.</p>",
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Sanitized Editorial Preview Modal */}
+      <PostPreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        title={title}
+        excerpt={excerpt}
+        content={content}
+        coverUrl={coverUrl}
+        categoryName={selectedCategory?.name ?? null}
+        categoryColor={selectedCategory?.color_hex ?? null}
+        authorName={selectedAuthor?.full_name ?? "Equipe EHS"}
+        authorPhoto={selectedAuthorPhoto}
+        publishedAt={publishedAtLocal || initialPost?.published_at || null}
+        tags={tags}
+      />
 
       {isEdit && initialPost && (
         <ConfirmDialog

@@ -9,14 +9,17 @@ import {
 
 export const dynamic = "force-dynamic";
 
-function isMissingTableError(error: { code?: string; message?: string } | null): boolean {
+function isMissingTableError(
+  error: { code?: string; message?: string } | null
+): boolean {
   if (!error) return false;
   const code = error.code ?? "";
   const msg = (error.message ?? "").toLowerCase();
   return (
     code === "42P01" ||
     code === "PGRST205" ||
-    msg.includes("contact_leads") && (msg.includes("does not exist") || msg.includes("could not find"))
+    (msg.includes("contact_leads") &&
+      (msg.includes("does not exist") || msg.includes("could not find")))
   );
 }
 
@@ -27,11 +30,14 @@ export default async function AdminLeadsPage() {
   const { data, error } = await supabase
     .from("contact_leads")
     .select(
-      "id, name, email, phone, subject, message, status, utm_source, utm_medium, utm_campaign, source_page, email_sent, created_at"
+      "id, name, email, phone, subject, message, status, utm_source, utm_medium, utm_campaign, gclid, fbclid, source_page, email_sent, created_at"
     )
     .order("created_at", { ascending: false });
 
   const tableMissing = isMissingTableError(error);
+  const emailNotificationsEnabled = Boolean(
+    process.env.RESEND_API_KEY?.trim() && process.env.CONTACT_EMAIL?.trim()
+  );
 
   const leads: AdminLeadItem[] = (data ?? []).map((row) => ({
     id: row.id,
@@ -46,21 +52,26 @@ export default async function AdminLeadsPage() {
     utm_source: row.utm_source,
     utm_medium: row.utm_medium,
     utm_campaign: row.utm_campaign,
+    gclid: row.gclid,
+    fbclid: row.fbclid,
     source_page: row.source_page,
     email_sent: Boolean(row.email_sent),
     created_at: row.created_at,
   }));
 
   return (
-    <div className="max-w-5xl mx-auto pt-28 lg:pt-0">
-      <div className="mb-8">
-        <h1 className="font-display text-2xl font-bold text-ink mb-1">
-          Leads de Contato
-        </h1>
-        <p className="text-forest-600 text-sm">
-          Acompanhe e responda os contatos recebidos pelo formulário do site.
+    <div className="max-w-6xl mx-auto">
+      <header className="mb-7">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gold-dark mb-1">
+          Relacionamento &amp; Triagem
         </p>
-      </div>
+        <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">
+          Caixa de Leads
+        </h1>
+        <p className="mt-1 text-sm text-forest-600">
+          Gerencie contatos recebidos pelo formulário do site, acompanhe entregas de e-mail e responda clientes rapidamente.
+        </p>
+      </header>
 
       {tableMissing ? (
         <div className="rounded-2xl border border-champagne-300 bg-champagne-50 p-6 text-sm text-ink space-y-2">
@@ -70,7 +81,10 @@ export default async function AdminLeadsPage() {
           </div>
           <p className="text-forest-700 leading-relaxed">
             Para habilitar o histórico de leads no painel administrativo, aplique
-            a migration <code className="px-1.5 py-0.5 rounded bg-white border border-forest-100 text-xs">supabase/migrations/002_contact_leads.sql</code>{" "}
+            a migration{" "}
+            <code className="px-1.5 py-0.5 rounded bg-white border border-forest-100 text-xs">
+              supabase/migrations/002_contact_leads.sql
+            </code>{" "}
             no SQL Editor do Supabase. Enquanto isso, os contatos do formulário
             continuam sendo enviados normalmente por e-mail.
           </p>
@@ -86,7 +100,10 @@ export default async function AdminLeadsPage() {
           </span>
         </div>
       ) : (
-        <LeadsTable leads={leads} />
+        <LeadsTable
+          leads={leads}
+          emailNotificationsEnabled={emailNotificationsEnabled}
+        />
       )}
     </div>
   );

@@ -1,10 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import {
-  PostForm,
-  type CategorySelectOption,
-} from "@/components/admin/post-form";
-import type { AuthorOption } from "@/types/blog";
+import { PostForm } from "@/components/admin/post-form";
+import type { AuthorOption, CategoryOption } from "@/types/blog";
 
 export const dynamic = "force-dynamic";
 
@@ -13,16 +10,19 @@ export default async function NovoPostPage() {
 
   const supabase = createAdminClient();
   const [{ data: categoriesData }, { data: authorsData }] = await Promise.all([
-    supabase.from("categories").select("id, name").order("name"),
+    supabase
+      .from("categories")
+      .select("id, name, slug, color_hex")
+      .order("name"),
     supabase.from("authors").select("id, full_name, slug").order("full_name"),
   ]);
 
-  const categories: CategorySelectOption[] = (categoriesData ?? []).map(
-    (item) => ({
-      id: String(item.id),
-      name: item.name,
-    })
-  );
+  const categories: CategoryOption[] = (categoriesData ?? []).map((item) => ({
+    id: String(item.id),
+    name: item.name,
+    slug: item.slug,
+    color_hex: item.color_hex,
+  }));
 
   const authors: AuthorOption[] = (authorsData ?? []).map((item) => ({
     id: item.id,
@@ -30,7 +30,5 @@ export default async function NovoPostPage() {
     slug: item.slug,
   }));
 
-  return (
-    <PostForm mode="create" categories={categories} authors={authors} />
-  );
+  return <PostForm mode="create" categories={categories} authors={authors} />;
 }

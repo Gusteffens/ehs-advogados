@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
-import { AdminSidebar } from "@/components/admin/admin-sidebar";
+import { AdminShell } from "@/components/admin/admin-shell";
 import { requireAdmin } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = {
   title: {
@@ -19,16 +19,30 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  await requireAdmin();
+  const session = await requireAdmin();
+
+  let unreadLeadsCount = 0;
+  try {
+    const supabase = createAdminClient();
+    const { count } = await supabase
+      .from("contact_leads")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "new");
+    unreadLeadsCount = count ?? 0;
+  } catch (error) {
+    console.error("Failed to count unread leads in AdminLayout:", error);
+  }
 
   return (
-    <ClerkProvider signInUrl="/sign-in">
-      <div className="flex min-h-screen bg-cream">
-        <AdminSidebar />
-        <div className="flex-1 lg:ml-64">
-          <div className="p-6 lg:p-10">{children}</div>
-        </div>
-      </div>
-    </ClerkProvider>
+    <AdminShell
+      unreadLeadsCount={unreadLeadsCount}
+      user={{
+        name: session.name,
+        email: session.email,
+        imageUrl: session.imageUrl,
+      }}
+    >
+      {children}
+    </AdminShell>
   );
 }

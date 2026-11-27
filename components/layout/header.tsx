@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import Image from "next/image";
-import { Show, UserButton } from "@clerk/nextjs";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { SITE_CONFIG } from "@/lib/site-config";
@@ -129,11 +128,8 @@ export function Header() {
             })}
           </div>
 
-          {/* ── Desktop Auth + CTA ── */}
+          {/* ── Desktop CTA ── */}
           <div className="hidden lg:flex items-center gap-3">
-            <Show when="signed-in">
-              <UserButton />
-            </Show>
             <Link href="/contato">
               <Button variant="secondary" size="sm">
                 Fale Conosco
@@ -239,11 +235,6 @@ export function Header() {
                 <div className="mt-auto space-y-3">
                   <div className="h-px bg-forest-600/30 mb-4" />
 
-                  <Show when="signed-in">
-                    <div className="flex justify-center">
-                      <UserButton />
-                    </div>
-                  </Show>
                   <Link href="/contato" className="block">
                     <Button
                       variant="secondary"

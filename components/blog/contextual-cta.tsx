@@ -5,8 +5,10 @@ import { ArrowUpRight, MessageCircle } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { SITE_CONFIG } from "@/lib/site-config";
 import { trackWhatsAppClick } from "@/lib/tracking";
+import { trackArticleEvent } from "@/lib/analytics/client-beacon";
 
 interface BlogContextualCtaProps {
+  postId?: string;
   postTitle: string;
   postSlug: string;
   categorySlug: string | null;
@@ -68,6 +70,7 @@ function getContextualConfig(
 }
 
 export function BlogContextualCta({
+  postId,
   postTitle,
   postSlug,
   categorySlug,
@@ -95,13 +98,20 @@ export function BlogContextualCta({
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() =>
+            onClick={() => {
               trackWhatsAppClick({
                 page: `/blog/${postSlug}`,
                 placement: "blog_article_cta",
                 label: config.trackingLabel,
-              })
-            }
+              });
+              if (postId) {
+                trackArticleEvent({
+                  postId,
+                  eventType: "cta_whatsapp",
+                  target: config.trackingLabel,
+                });
+              }
+            }}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-gold px-6 py-3 text-sm font-semibold text-ink shadow-md hover:bg-gold/90 transition-colors no-underline"
           >
             <MessageCircle className="h-4 w-4" />
@@ -109,6 +119,15 @@ export function BlogContextualCta({
           </a>
           <Link
             href={config.primaryHref}
+            onClick={() => {
+              if (postId) {
+                trackArticleEvent({
+                  postId,
+                  eventType: "cta_primary",
+                  target: config.primaryHref,
+                });
+              }
+            }}
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-cream/25 px-6 py-3 text-sm font-medium text-cream hover:bg-cream/10 transition-colors no-underline"
           >
             {config.primaryLabel}

@@ -1,4 +1,3 @@
-import { ClerkProvider } from "@clerk/nextjs";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { FloatingWhatsApp } from "@/components/layout/floating-whatsapp";
@@ -12,15 +11,13 @@ export default function SiteLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
-      <PostHogProvider>
-        <MarketingScripts />
-        <Header />
-        <main className="min-h-screen">{children}</main>
-        <Footer />
-        <FloatingWhatsApp />
-        <CookieConsentBanner />
-      </PostHogProvider>
-    </ClerkProvider>
+    <PostHogProvider>
+      <MarketingScripts />
+      <Header />
+      <main className="min-h-screen">{children}</main>
+      <Footer />
+      <FloatingWhatsApp />
+      <CookieConsentBanner />
+    </PostHogProvider>
   );
 }

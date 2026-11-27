@@ -117,12 +117,12 @@ export default function PoliticaDePrivacidadePage() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-ink mb-1">
-                    Cookies de Sessão (Autenticação — Clerk)
+                    Cookies de Sessão (Autenticação Administrativa)
                   </h3>
                   <ul className="list-disc pl-5 space-y-1">
                     <li>
-                      Token de sessão para autenticação interna do painel
-                      administrativo dos advogados
+                      Cookie de sessão HttpOnly assinado para autenticação
+                      interna do painel administrativo dos advogados
                     </li>
                     <li>Dados de perfil associados à conta autenticada</li>
                   </ul>
@@ -162,7 +162,8 @@ export default function PoliticaDePrivacidadePage() {
                 </li>
                 <li>
                   <strong>Autenticação:</strong> garantir o acesso seguro ao
-                  painel administrativo do escritório (Clerk).
+                  painel administrativo do escritório por meio de sessão
+                  própria autenticada.
                 </li>
                 <li>
                   <strong>Segurança e disponibilidade:</strong> proteção contra
@@ -191,8 +192,8 @@ export default function PoliticaDePrivacidadePage() {
                   titular.
                 </li>
                 <li>
-                  <strong>Cookies de sessão (Clerk)</strong> — Execução de
-                  contrato ou procedimentos preliminares (Art. 7°, V).
+                  <strong>Cookies de sessão administrativa</strong> — Execução
+                  de contrato ou procedimentos preliminares (Art. 7°, V).
                 </li>
                 <li>
                   <strong>Cookies técnicos (Cloudflare)</strong> — Legítimo
@@ -216,8 +217,9 @@ export default function PoliticaDePrivacidadePage() {
                   plataforma (em média de 13 a 24 meses).
                 </li>
                 <li>
-                  <strong>Cookies de sessão (Clerk):</strong> mantidos pelo
-                  tempo de duração da sessão autenticada.
+                  <strong>Cookies de sessão administrativa:</strong> mantidos
+                  pelo tempo de duração da sessão autenticada (até 30 dias ou
+                  até o encerramento manual).
                 </li>
               </ul>
             </div>
@@ -248,10 +250,10 @@ export default function PoliticaDePrivacidadePage() {
             <div>
               <SectionHeading>7. Uso de Cookies</SectionHeading>
               <p className="mb-3">
-                Este site utiliza cookies estritamente necessários (Clerk e
-                Cloudflare), cookies de analytics (PostHog) e cookies/tags de
-                mensuração de campanhas (Google Tag Manager, Google Ads e Meta
-                Pixel).
+                Este site utiliza cookies estritamente necessários (sessão
+                administrativa própria e Cloudflare), cookies de analytics
+                (PostHog) e cookies/tags de mensuração de campanhas (Google Tag
+                Manager, Google Ads e Meta Pixel).
               </p>
               <p className="mb-2">
                 Você pode bloquear ou limpar cookies a qualquer momento nas
@@ -317,17 +319,6 @@ export default function PoliticaDePrivacidadePage() {
                   </a>
                 </li>
                 <li>
-                  <strong>Clerk</strong> (autenticação) —{" "}
-                  <a
-                    href="https://clerk.com/privacy"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gold-dark underline underline-offset-2"
-                  >
-                    clerk.com/privacy
-                  </a>
-                </li>
-                <li>
                   <strong>Cloudflare</strong> (segurança e DNS) —{" "}
                   <a
                     href="https://www.cloudflare.com/privacypolicy/"
@@ -363,8 +354,8 @@ export default function PoliticaDePrivacidadePage() {
                 dados pessoais contra acessos não autorizados, perda ou
                 tratamento inadequado, incluindo criptografia em trânsito
                 (HTTPS/TLS), proteção WAF/DDoS via Cloudflare, controle de
-                acesso por autenticação segura (Clerk) e hospedagem em
-                infraestrutura certificada (Vercel).
+                acesso por autenticação própria com sessões assinadas e
+                hospedagem em infraestrutura certificada (Vercel).
               </p>
             </div>
 
